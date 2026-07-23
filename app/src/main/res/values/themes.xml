@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Eto" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#01082D</item>
+        <item name="android:navigationBarColor">#01082D</item>
+    </style>
+</resources>
