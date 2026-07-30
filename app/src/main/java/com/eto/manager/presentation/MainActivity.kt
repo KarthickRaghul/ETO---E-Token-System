@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HourglassEmpty
@@ -135,139 +136,109 @@ fun EtoAppShell(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.LocalHospital,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "ETO Online",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                            )
-                        }
-                    },
-                    actions = {
-                        // Dynamic light/dark theme switcher
-                        IconButton(
-                            onClick = onThemeToggle,
-                            modifier = Modifier.bounceClick()
-                        ) {
-                            Icon(
-                                imageVector = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
-                                contentDescription = "Toggle Theme",
-                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        // Role selection dropdown badge
-                        Box(modifier = Modifier.padding(end = 12.dp)) {
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(MaterialTheme.colorScheme.primaryContainer)
-                                    .bounceClick()
-                                    .clickable { menuExpanded = true }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                val icon = when (currentRole) {
-                                    UserRole.PATIENT -> Icons.Outlined.Person
-                                    UserRole.RECEPTIONIST -> Icons.Outlined.SupportAgent
-                                    UserRole.DOCTOR -> Icons.Outlined.MedicalServices
-                                    UserRole.ADMIN -> Icons.Outlined.AdminPanelSettings
-                                }
+                if (currentRole != UserRole.PATIENT) {
+                    TopAppBar(
+                        title = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = icon, 
-                                    contentDescription = null, 
-                                    tint = MaterialTheme.colorScheme.primary, 
-                                    modifier = Modifier.size(16.dp)
+                                    imageVector = Icons.Outlined.LocalHospital,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = currentRole.name,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    "ETO Online",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                        },
+                        actions = {
+                            // Dynamic light/dark theme switcher
+                            IconButton(
+                                onClick = onThemeToggle,
+                                modifier = Modifier.bounceClick()
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Default.ExpandMore, 
-                                    contentDescription = null, 
-                                    tint = MaterialTheme.colorScheme.primary, 
-                                    modifier = Modifier.size(16.dp)
+                                    imageVector = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                                    contentDescription = "Toggle Theme",
+                                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
                                 )
                             }
 
-                            DropdownMenu(
-                                expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false }
-                            ) {
-                                UserRole.values().forEach { role ->
-                                    DropdownMenuItem(
-                                        text = { Text(role.name, fontSize = 12.sp, fontWeight = FontWeight.Bold) },
-                                        onClick = {
-                                            viewModel.setRole(role)
-                                            menuExpanded = false
-                                        }
+                            Spacer(modifier = Modifier.width(4.dp))
+
+                            // Role selection dropdown badge
+                            Box(modifier = Modifier.padding(end = 12.dp)) {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(MaterialTheme.colorScheme.primaryContainer)
+                                        .bounceClick()
+                                        .clickable { menuExpanded = true }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    val icon = when (currentRole) {
+                                        UserRole.PATIENT -> Icons.Outlined.Person
+                                        UserRole.RECEPTIONIST -> Icons.Outlined.SupportAgent
+                                        UserRole.DOCTOR -> Icons.Outlined.MedicalServices
+                                        UserRole.ADMIN -> Icons.Outlined.AdminPanelSettings
+                                    }
+                                    Icon(
+                                        imageVector = icon, 
+                                        contentDescription = null, 
+                                        tint = MaterialTheme.colorScheme.primary, 
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = currentRole.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.ExpandMore, 
+                                        contentDescription = null, 
+                                        tint = MaterialTheme.colorScheme.primary, 
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
+
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false }
+                                ) {
+                                    UserRole.values().forEach { role ->
+                                        DropdownMenuItem(
+                                            text = { Text(role.name, fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                            onClick = {
+                                                viewModel.setRole(role)
+                                                menuExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
                             }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent
+                        )
                     )
-                )
+                }
             },
             bottomBar = {
                 BottomFloatingNavBar(
+                    currentRole = currentRole,
                     activeTab = activeTab,
                     onTabSelected = { activeTab = it }
                 )
-            },
-            floatingActionButton = {
-                // SMS Virtual Alerts drawer trigger floating badge
-                Box(
-                    modifier = Modifier.padding(bottom = 80.dp) // Float above navigation bar
-                ) {
-                    FloatingActionButton(
-                        onClick = { showPhoneSimulator = !showPhoneSimulator },
-                        modifier = Modifier
-                            .bounceClick()
-                            .magnetEffect(),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "SMS Alerts Manager"
-                            )
-                            if (notifications.isNotEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(top = 2.dp, end = 2.dp)
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.Red)
-                                )
-                            }
-                        }
-                    }
-                }
             }
         ) { innerPadding ->
             Box(
@@ -277,7 +248,12 @@ fun EtoAppShell(
             ) {
                 // Content Switcher dependent on active role AND active bottom tab
                 when (currentRole) {
-                    UserRole.PATIENT -> PatientView(viewModel, activeTab)
+                    UserRole.PATIENT -> PatientView(
+                        viewModel = viewModel,
+                        activeTab = activeTab,
+                        onTabSelected = { activeTab = it },
+                        onNotificationClick = { showPhoneSimulator = !showPhoneSimulator }
+                    )
                     UserRole.RECEPTIONIST -> ReceptionistView(viewModel, activeTab)
                     UserRole.DOCTOR -> DoctorView(viewModel, activeTab)
                     UserRole.ADMIN -> AdminView(viewModel, activeTab)
@@ -302,16 +278,23 @@ fun EtoAppShell(
 
 @Composable
 fun BottomFloatingNavBar(
+    currentRole: UserRole,
     activeTab: Int,
     onTabSelected: (Int) -> Unit
 ) {
     val isDark = MaterialTheme.colorScheme.background == DarkBgStart
-    val items = listOf(
-        Triple("Home", Icons.Outlined.Home, 0),
-        Triple("Queue", Icons.Outlined.HourglassEmpty, 1),
-        Triple("History", Icons.Outlined.ReceiptLong, 2),
-        Triple("Profile", Icons.Outlined.Person, 3)
-    )
+    val items = when (currentRole) {
+        UserRole.PATIENT -> listOf(
+            Triple("Home", Icons.Outlined.Home, 0),
+            Triple("My Appointments", Icons.Outlined.CalendarToday, 1)
+        )
+        else -> listOf(
+            Triple("Home", Icons.Outlined.Home, 0),
+            Triple("Queue", Icons.Outlined.HourglassEmpty, 1),
+            Triple("History", Icons.Outlined.ReceiptLong, 2),
+            Triple("Profile", Icons.Outlined.Person, 3)
+        )
+    }
 
     Box(
         modifier = Modifier

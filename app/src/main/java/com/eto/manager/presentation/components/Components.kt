@@ -95,47 +95,7 @@ fun Modifier.glassmorphicCard(isDark: Boolean, cornerRadius: Dp = 28.dp): Modifi
 /**
  * Magnet Effect: Item moves towards drag gesture and springs back on release.
  */
-fun Modifier.magnetEffect(): Modifier = composed {
-    val coroutineScope = rememberCoroutineScope()
-    val offsetX = remember { Animatable(0f) }
-    val offsetY = remember { Animatable(0f) }
-    
-    this
-        .graphicsLayer {
-            translationX = offsetX.value
-            translationY = offsetY.value
-        }
-        .pointerInput(Unit) {
-            detectDragGestures(
-                onDragEnd = {
-                    coroutineScope.launch {
-                        offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
-                    }
-                    coroutineScope.launch {
-                        offsetY.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
-                    }
-                },
-                onDragCancel = {
-                    coroutineScope.launch {
-                        offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
-                    }
-                    coroutineScope.launch {
-                        offsetY.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
-                    }
-                },
-                onDrag = { change, dragAmount ->
-                    change.consume()
-                    val limit = 60f // Boundary constraint for magnet strength
-                    val targetX = (offsetX.value + dragAmount.x).coerceIn(-limit, limit)
-                    val targetY = (offsetY.value + dragAmount.y).coerceIn(-limit, limit)
-                    coroutineScope.launch {
-                        offsetX.snapTo(targetX)
-                        offsetY.snapTo(targetY)
-                    }
-                }
-            )
-        }
-}
+fun Modifier.magnetEffect(): Modifier = this
 
 /**
  * Bounce Click: Scales down slightly on press and rebounds on release.

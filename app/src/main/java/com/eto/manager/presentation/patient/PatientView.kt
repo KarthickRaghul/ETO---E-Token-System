@@ -36,6 +36,27 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.MedicalServices
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import com.eto.manager.presentation.UserRole
+import androidx.compose.foundation.border
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -43,6 +64,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import com.eto.manager.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -77,6 +99,8 @@ import com.eto.manager.presentation.theme.*
 fun PatientView(
     viewModel: EtoViewModel, 
     activeTab: Int, 
+    onTabSelected: (Int) -> Unit = {},
+    onNotificationClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val name by viewModel.patientName.collectAsState()
@@ -89,6 +113,7 @@ fun PatientView(
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedDeptId by remember { mutableStateOf<String?>(null) }
+    var isBookingFlowActive by remember { mutableStateOf(false) }
 
     // Filter tokens for this patient
     val patientTokens = tokens.filter { it.patientPhone == phone }
@@ -101,136 +126,644 @@ fun PatientView(
             .padding(horizontal = 16.dp)
     ) {
         when (activeTab) {
-            0 -> { // HOME TAB: Browse Departments, Search & Book Doctors
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        // Glassmorphic Search Bar
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text("Search doctor specialty, name...", fontSize = 14.sp) },
-                            leadingIcon = { 
-                                Icon(
-                                    imageVector = Icons.Default.Search, 
-                                    contentDescription = null, 
-                                    tint = MaterialTheme.colorScheme.primary
-                                ) 
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
-                        )
-                    }
-
-                    item {
-                        SectionHeader("Select Department")
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+            0 -> { // HOME TAB
+                if (isBookingFlowActive) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
                         ) {
-                            // All category pill
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clickable { isBookingFlowActive = false }
+                                    .padding(end = 8.dp)
+                                    .size(24.dp)
+                            )
+                            Text(
+                                text = "Choose a Specialist",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
                             item {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            if (selectedDeptId == null) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                        )
-                                        .clickable { selectedDeptId = null }
-                                        .padding(horizontal = 18.dp, vertical = 8.dp)
-                                ) {
-                                    Text(
-                                        "All",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        color = if (selectedDeptId == null) MaterialTheme.colorScheme.onPrimary 
-                                                else MaterialTheme.colorScheme.primary
+                                Spacer(modifier = Modifier.height(8.dp))
+                                // Glassmorphic Search Bar
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    placeholder = { Text("Search doctor specialty, name...", fontSize = 14.sp) },
+                                    leadingIcon = { 
+                                        Icon(
+                                            imageVector = Icons.Default.Search, 
+                                            contentDescription = null, 
+                                            tint = MaterialTheme.colorScheme.primary
+                                        ) 
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                     )
+                                )
+                            }
+
+                            item {
+                                SectionHeader("Select Department")
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    // All category pill
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(
+                                                    if (selectedDeptId == null) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                                )
+                                                .clickable { selectedDeptId = null }
+                                                .padding(horizontal = 18.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                "All",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = if (selectedDeptId == null) MaterialTheme.colorScheme.onPrimary 
+                                                        else MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+
+                                    items(departments) { dept ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(
+                                                    if (selectedDeptId == dept.id) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                                )
+                                                .clickable { selectedDeptId = dept.id }
+                                                .padding(horizontal = 18.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                dept.name,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = if (selectedDeptId == dept.id) MaterialTheme.colorScheme.onPrimary 
+                                                        else MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
-                            items(departments) { dept ->
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            if (selectedDeptId == dept.id) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                        )
-                                        .clickable { selectedDeptId = dept.id }
-                                        .padding(horizontal = 18.dp, vertical = 8.dp)
-                                ) {
-                                    Text(
-                                        dept.name,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        color = if (selectedDeptId == dept.id) MaterialTheme.colorScheme.onPrimary 
-                                                else MaterialTheme.colorScheme.primary
+                            item {
+                                SectionHeader("Available Specialists")
+                            }
+
+                            val filteredDoctors = doctors.filter { doc ->
+                                val matchesSearch = doc.name.contains(searchQuery, ignoreCase = true) || doc.specialty.contains(searchQuery, ignoreCase = true)
+                                val matchesDept = selectedDeptId == null || doc.departmentId == selectedDeptId
+                                matchesSearch && matchesDept
+                            }
+
+                            if (doctors.isEmpty()) {
+                                items(3) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(130.dp)
+                                            .clip(RoundedCornerShape(24.dp))
+                                            .shimmer()
                                     )
                                 }
+                            } else if (filteredDoctors.isEmpty()) {
+                                item {
+                                    EmptyState(message = "No specialists available matching constraints.")
+                                }
+                            } else {
+                                items(filteredDoctors) { doc ->
+                                    DoctorCard(
+                                        doctor = doc,
+                                        isSelected = selectedDocId == doc.id,
+                                        symptoms = symptoms,
+                                        onSelect = { viewModel.selectDoctor(doc.id) },
+                                        onCancel = { viewModel.selectDoctor(null) },
+                                        onSymptomsChange = { viewModel.symptomsInput.value = it },
+                                        onSubmit = { viewModel.requestToken() }
+                                    )
+                                }
+                            }
+                            
+                            item {
+                                Spacer(modifier = Modifier.height(80.dp))
                             }
                         }
                     }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Patient Greeting Header
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    val initials = remember(name) {
+                                        if (name.isBlank()) "AS" else {
+                                            val parts = name.split(" ")
+                                            if (parts.size >= 2) "${parts[0].firstOrNull() ?: 'A'}${parts[1].firstOrNull() ?: 'S'}"
+                                            else "${name.firstOrNull() ?: 'A'}"
+                                        }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFEFF6FF)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = initials,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF2563EB)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Good Morning",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        )
+                                        Text(
+                                            text = "${name.ifBlank { "Aarav Sharma" }} 👋",
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    // Dropdown selector for role switching
+                                    var roleMenuExpanded by remember { mutableStateOf(false) }
+                                    val currentRoleVal = viewModel.currentRole.collectAsState().value
+                                    Box {
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                                                .clickable { roleMenuExpanded = true }
+                                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            val roleIcon = when (currentRoleVal) {
+                                                UserRole.PATIENT -> Icons.Outlined.Person
+                                                UserRole.RECEPTIONIST -> Icons.Outlined.SupportAgent
+                                                UserRole.DOCTOR -> Icons.Outlined.MedicalServices
+                                                UserRole.ADMIN -> Icons.Outlined.AdminPanelSettings
+                                            }
+                                            Icon(
+                                                imageVector = roleIcon,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = currentRoleVal.name,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.width(2.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.ExpandMore,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = roleMenuExpanded,
+                                            onDismissRequest = { roleMenuExpanded = false }
+                                        ) {
+                                            UserRole.values().forEach { role ->
+                                                DropdownMenuItem(
+                                                    text = { Text(role.name, fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                                    onClick = {
+                                                        viewModel.setRole(role)
+                                                        roleMenuExpanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
 
-                    item {
-                        SectionHeader("Available Specialists")
-                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                            .clickable { onNotificationClick() },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Notifications,
+                                            contentDescription = "Notifications",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF3B82F6))
+                                                .align(Alignment.TopEnd)
+                                                .offset(x = (-2).dp, y = 2.dp)
+                                        )
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                            .clickable { /* Profile tap */ },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = "Profile",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
-                    // Filtering logic
-                    val filteredDoctors = doctors.filter { doc ->
-                        val matchesSearch = doc.name.contains(searchQuery, ignoreCase = true) || doc.specialty.contains(searchQuery, ignoreCase = true)
-                        val matchesDept = selectedDeptId == null || doc.departmentId == selectedDeptId
-                        matchesSearch && matchesDept
-                    }
+                        item {
+                            // Book an Appointment Card
+                            SpotlightCard(
+                                modifier = Modifier.fillMaxWidth().clickable { isBookingFlowActive = true },
+                                cornerRadius = 24.dp
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clip(RoundedCornerShape(14.dp))
+                                                .background(Color(0xFFEFF6FF)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.CalendarToday,
+                                                contentDescription = null,
+                                                tint = Color(0xFF2563EB),
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column {
+                                            Text(
+                                                text = "Book an Appointment",
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = "Search by symptoms, specialisation or hospital near you",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                            )
+                                        }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF2563EB)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowRight,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
-                    if (doctors.isEmpty()) {
-                        items(3) {
+                        item {
+                            // Nearby Hospitals Section
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Nearby Hospitals",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "View all",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF2563EB),
+                                    modifier = Modifier.clickable { /* View all */ }
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            // Map Canvas Card
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(130.dp)
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .shimmer()
-                            )
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9))
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    // parks
+                                    drawRoundRect(
+                                        color = if (isDark) Color(0xFF0F172A) else Color(0xFFDEF7EC),
+                                        topLeft = Offset(40f, 60f),
+                                        size = Size(120f, 80f),
+                                        cornerRadius = CornerRadius(8f)
+                                    )
+                                    drawRoundRect(
+                                        color = if (isDark) Color(0xFF0F172A) else Color(0xFFDEF7EC),
+                                        topLeft = Offset(400f, 150f),
+                                        size = Size(200f, 90f),
+                                        cornerRadius = CornerRadius(8f)
+                                    )
+                                    drawRoundRect(
+                                        color = if (isDark) Color(0xFF0F172A) else Color(0xFFDEF7EC),
+                                        topLeft = Offset(700f, 40f),
+                                        size = Size(100f, 120f),
+                                        cornerRadius = CornerRadius(8f)
+                                    )
+
+                                    // grid roads
+                                    val roadColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
+                                    drawLine(color = roadColor, start = Offset(0f, 140f), end = Offset(size.width, 140f), strokeWidth = 14f)
+                                    drawLine(color = roadColor, start = Offset(240f, 0f), end = Offset(240f, size.height), strokeWidth = 14f)
+                                    drawLine(color = roadColor, start = Offset(580f, 0f), end = Offset(580f, size.height), strokeWidth = 14f)
+                                    drawLine(color = roadColor, start = Offset(0f, 230f), end = Offset(size.width, 230f), strokeWidth = 14f)
+                                }
+
+                                // Pulsing location pin
+                                Box(
+                                    modifier = Modifier.align(Alignment.Center).offset(x = (-30).dp, y = (-10).dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0x263B82F6))
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF3B82F6))
+                                    )
+                                }
+
+                                HospitalMapPin(text = "H", modifier = Modifier.align(Alignment.TopCenter).offset(x = (-30).dp, y = 20.dp), isBlue = true)
+                                HospitalMapPin(text = "H", modifier = Modifier.align(Alignment.CenterStart).offset(x = 50.dp, y = (-20).dp), isBlue = false)
+                                HospitalMapPin(text = "H", modifier = Modifier.align(Alignment.CenterEnd).offset(x = (-60).dp, y = (-20).dp), isBlue = false)
+                                HospitalMapPin(text = "H", modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-100).dp, y = (-15).dp), isBlue = false)
+                            }
                         }
-                    } else if (filteredDoctors.isEmpty()) {
+
                         item {
-                            EmptyState(message = "No specialists available matching constraints.")
-                        }
-                    } else {
-                        items(filteredDoctors) { doc ->
-                            DoctorCard(
-                                doctor = doc,
-                                isSelected = selectedDocId == doc.id,
-                                symptoms = symptoms,
-                                onSelect = { viewModel.selectDoctor(doc.id) },
-                                onCancel = { viewModel.selectDoctor(null) },
-                                onSymptomsChange = { viewModel.symptomsInput.value = it },
-                                onSubmit = { viewModel.requestToken() }
+                            // Horizontal scrolling list of mock hospital cards
+                            val mockHospitals = listOf(
+                                MockHospital("City Care Hospital", "1.2 km • 18 min", "4.6", R.drawable.hospital_thumbnail),
+                                MockHospital("Sunrise Clinic", "2.4 km • 24 min", "4.4", R.drawable.hospital_thumbnail),
+                                MockHospital("St. Jude Hospital", "3.5 km • 30 min", "4.7", R.drawable.hospital_thumbnail)
                             )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(mockHospitals) { hospital ->
+                                    NearbyHospitalCard(hospital)
+                                }
+                            }
                         }
-                    }
-                    
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp)) // padding at the bottom for floating nav
+
+                        // My Active Appointment
+                        val activeToken = patientTokens.find { it.status == TokenStatus.PENDING || it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING }
+                        if (activeToken != null) {
+                            item {
+                                Text(
+                                    text = "My Active Appointment",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                val doctorQueue = tokens.filter { it.doctorId == activeToken.doctorId && (it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING) }
+                                val servingToken = doctorQueue.find { it.status == TokenStatus.SERVING }
+                                val pendingQueue = doctorQueue.filter { it.status == TokenStatus.APPROVED }.sortedBy { it.id }
+                                val positionIndex = pendingQueue.indexOfFirst { it.id == activeToken.id }
+                                val aheadCount = if (positionIndex >= 0) positionIndex + (if (servingToken != null) 1 else 0) else 0
+
+                                val progressTarget = if (aheadCount >= 0) {
+                                    (1f / (aheadCount + 1).toFloat()).coerceIn(0.15f, 1.0f)
+                                } else 1.0f
+
+                                val animatedProgress by animateFloatAsState(
+                                    targetValue = progressTarget,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessVeryLow),
+                                    label = "progress"
+                                )
+
+                                SpotlightCard(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    cornerRadius = 24.dp
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFFEFF6FF)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.LocalHospital,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF2563EB),
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Column {
+                                                Text(
+                                                    text = "City Care Hospital",
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    text = "${activeToken.departmentName} • ${activeToken.doctorName}",
+                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0xFFEBFDF5))
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = "Confirmed",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF10B981)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        ActiveAppointmentStat("Token No.", activeToken.tokenNumber, isPrimary = true)
+                                        ActiveAppointmentStat("Current Token", servingToken?.tokenNumber ?: "None")
+                                        ActiveAppointmentStat("Patients Ahead", "$aheadCount")
+                                        ActiveAppointmentStat("Est. Waiting", "${aheadCount * 12} min")
+                                    }
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(6.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(animatedProgress)
+                                                .fillMaxHeight()
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF3B82F6))
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Text(
+                                        text = "You'll be notified when it's almost your turn",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    Button(
+                                        onClick = { onTabSelected(1) },
+                                        modifier = Modifier.fillMaxWidth().height(44.dp).bounceClick(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFFEFF6FF),
+                                            contentColor = Color(0xFF2563EB)
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.Center,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("Track Queue", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowRight,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            // Quick Actions Section
+                            Text(
+                                text = "Quick Actions",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                QuickActionCard("My Health\nRecords", Icons.Outlined.MedicalServices, modifier = Modifier.weight(1f))
+                                QuickActionCard("Prescriptions", Icons.Outlined.ReceiptLong, modifier = Modifier.weight(1f))
+                                QuickActionCard("Lab Reports", Icons.Outlined.SupportAgent, modifier = Modifier.weight(1f))
+                                QuickActionCard("Bills", Icons.Outlined.AdminPanelSettings, modifier = Modifier.weight(1f))
+                            }
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
+                        }
                     }
                 }
             }
 
-            1 -> { // QUEUE TAB: Active Token Tracking
+            1 -> { // MY APPOINTMENTS TAB
                 val activeTokens = patientTokens.filter { it.status == TokenStatus.PENDING || it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING }
+                val historyTokens = patientTokens.filter { it.status == TokenStatus.COMPLETED }
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -239,7 +772,7 @@ fun PatientView(
                     item {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "My Active Tokens",
+                            text = "My Appointments",
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
@@ -247,11 +780,10 @@ fun PatientView(
                         )
                     }
 
-                    if (activeTokens.isEmpty()) {
+                    if (activeTokens.isNotEmpty()) {
                         item {
-                            EmptyState(message = "No active booking token found.\nSwitch to the Home tab to book an appointment.")
+                            SectionHeader("Active Queues")
                         }
-                    } else {
                         items(activeTokens) { activeToken ->
                             ActiveTokenCard(
                                 activeToken = activeToken,
@@ -262,27 +794,7 @@ fun PatientView(
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
-                }
-            }
-
-            2 -> { // HISTORY TAB: Consultations & Medical Prescription History
-                val historyTokens = patientTokens.filter { it.status == TokenStatus.COMPLETED }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Prescription & History",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        )
+                        SectionHeader("Past Consultations")
                     }
 
                     if (historyTokens.isEmpty()) {
@@ -292,87 +804,6 @@ fun PatientView(
                     } else {
                         items(historyTokens) { history ->
                             HistoryCard(token = history)
-                        }
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
-                }
-            }
-
-            3 -> { // PROFILE TAB: Edit Patient Identity details
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Patient Identity Profile",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        )
-                    }
-
-                    item {
-                        SpotlightCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            cornerRadius = 28.dp
-                        ) {
-                            Text(
-                                "Profile Details", 
-                                style = MaterialTheme.typography.titleMedium, 
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            OutlinedTextField(
-                                value = name,
-                                onValueChange = { viewModel.patientName.value = it },
-                                label = { Text("Full Name", fontSize = 13.sp) },
-                                leadingIcon = { 
-                                    Icon(
-                                        imageVector = Icons.Default.Person, 
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    ) 
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            OutlinedTextField(
-                                value = phone,
-                                onValueChange = { viewModel.patientPhone.value = it },
-                                label = { Text("Mobile Number", fontSize = 13.sp) },
-                                leadingIcon = { 
-                                    Icon(
-                                        imageVector = Icons.Default.Phone, 
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    ) 
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
                         }
                     }
 
@@ -824,6 +1255,155 @@ fun ActiveTokenCard(
             QueueDetailItem("Now Serving", servingToken?.tokenNumber ?: "None")
             QueueDetailItem("Ahead Of You", "$aheadCount Patients")
             QueueDetailItem("Est. Wait Time", "${aheadCount * 12} mins")
+        }
+    }
+}
+
+@Composable
+fun HospitalMapPin(text: String, modifier: Modifier = Modifier, isBlue: Boolean = false) {
+    Box(
+        modifier = modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isBlue) Color(0xFF3B82F6) else Color.White)
+            .border(1.dp, if (isBlue) Color.Transparent else Color(0xFFE2E8F0), RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isBlue) Color.White else Color(0xFF2563EB)
+        )
+    }
+}
+
+data class MockHospital(
+    val name: String,
+    val distanceTime: String,
+    val rating: String,
+    val imageRes: Int
+)
+
+@Composable
+fun NearbyHospitalCard(hospital: MockHospital) {
+    SpotlightCard(
+        modifier = Modifier.width(220.dp),
+        cornerRadius = 20.dp
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = hospital.imageRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = hospital.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = hospital.distanceTime,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFDEF7EC))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Open",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF03543F)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFB300),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = hospital.rating,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ActiveAppointmentStat(label: String, value: String, isPrimary: Boolean = false) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isPrimary) Color(0xFF2563EB) else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun QuickActionCard(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    SpotlightCard(
+        modifier = modifier.height(100.dp),
+        cornerRadius = 20.dp
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFEFF6FF)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFF2563EB),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 13.sp
+            )
         }
     }
 }
