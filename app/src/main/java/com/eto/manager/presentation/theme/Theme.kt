@@ -13,37 +13,37 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = SteelBlueMedium,
-    onPrimary = TextWhite,
-    primaryContainer = NavyBluePrimary,
-    onPrimaryContainer = SkyBlueLight,
-    secondary = SkyBlueLight,
-    onSecondary = MidnightDarkBg,
-    background = MidnightDarkBg,
-    onBackground = TextWhite,
-    surface = DarkBlueSecondary,
-    onSurface = TextWhite,
-    surfaceVariant = SurfaceGray,
-    onSurfaceVariant = TextGray,
-    error = ErrorRed,
-    onError = TextWhite
+    primary = DarkPrimaryBlue,
+    onPrimary = Color.White,
+    primaryContainer = DarkSoftBlue,
+    onPrimaryContainer = DarkPrimaryBlue,
+    secondary = DarkSoftBlue,
+    onSecondary = DarkPrimaryBlue,
+    background = DarkBgStart,
+    onBackground = DarkTextPrimary,
+    surface = DarkCardBg,
+    onSurface = DarkTextPrimary,
+    surfaceVariant = Color(0x33000000),
+    onSurfaceVariant = DarkTextSecondary,
+    error = DarkErrorText,
+    onError = Color.White
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = NavyBluePrimary,
-    onPrimary = TextWhite,
-    primaryContainer = SkyBlueLight,
-    onPrimaryContainer = MidnightDarkBg,
-    secondary = SteelBlueMedium,
-    onSecondary = TextWhite,
-    background = Color(0xFFF8FAFC),
-    onBackground = MidnightDarkBg,
-    surface = Color.White,
-    onSurface = MidnightDarkBg,
-    surfaceVariant = Color(0xFFE2E8F0),
-    onSurfaceVariant = Color(0xFF334155),
-    error = ErrorRed,
-    onError = TextWhite
+    primary = LightPrimaryBlue,
+    onPrimary = Color.White,
+    primaryContainer = LightSoftBlue,
+    onPrimaryContainer = LightPrimaryBlue,
+    secondary = LightSoftBlue,
+    onSecondary = LightPrimaryBlue,
+    background = LightBgStart,
+    onBackground = LightTextPrimary,
+    surface = LightCardBg,
+    onSurface = LightTextPrimary,
+    surfaceVariant = Color(0x80FFFFFF),
+    onSurfaceVariant = LightTextSecondary,
+    error = LightErrorText,
+    onError = Color.White
 )
 
 @Composable
@@ -60,6 +60,7 @@ fun EtoTheme(
             window.statusBarColor = colorScheme.background.toArgb()
             window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

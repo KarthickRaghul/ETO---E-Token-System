@@ -39,6 +39,7 @@ data class Token(
 
 enum class TokenStatus {
     PENDING,
+    APPROVED,
     SERVING,
     COMPLETED,
     SKIPPED

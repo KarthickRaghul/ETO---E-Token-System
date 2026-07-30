@@ -12,6 +12,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -30,8 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -54,13 +54,41 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eto.manager.domain.model.TokenStatus
-import com.eto.manager.presentation.theme.ErrorRed
-import com.eto.manager.presentation.theme.SuccessGreen
-import com.eto.manager.presentation.theme.WarningOrange
+import com.eto.manager.presentation.theme.*
 import kotlinx.coroutines.launch
+
+// --- Glassmorphic Modifiers ---
+
+/**
+ * Glassmorphic Card Background & Border & Shadow
+ */
+fun Modifier.glassmorphicCard(isDark: Boolean, cornerRadius: Dp = 28.dp): Modifier = composed {
+    val cardBg = if (isDark) DarkCardBg else LightCardBg
+    val borderColor = if (isDark) DarkCardBorder else LightCardBorder
+    val shadowColor = if (isDark) Color(0x33000000) else Color(0x0F0F172A)
+    
+    this
+        .shadow(
+            elevation = 10.dp,
+            shape = RoundedCornerShape(cornerRadius),
+            clip = false,
+            ambientColor = shadowColor,
+            spotColor = shadowColor
+        )
+        .background(
+            color = cardBg,
+            shape = RoundedCornerShape(cornerRadius)
+        )
+        .border(
+            width = 1.dp,
+            color = borderColor,
+            shape = RoundedCornerShape(cornerRadius)
+        )
+}
 
 // --- ReactBits Ports: Modifiers ---
 
@@ -97,7 +125,7 @@ fun Modifier.magnetEffect(): Modifier = composed {
                 },
                 onDrag = { change, dragAmount ->
                     change.consume()
-                    val limit = 80f // Boundary constraint for magnet strength
+                    val limit = 60f // Boundary constraint for magnet strength
                     val targetX = (offsetX.value + dragAmount.x).coerceIn(-limit, limit)
                     val targetY = (offsetY.value + dragAmount.y).coerceIn(-limit, limit)
                     coroutineScope.launch {
@@ -139,6 +167,7 @@ fun Modifier.bounceClick(): Modifier = composed {
  * Shimmer Modifier: Adds animated loading skeleton waves.
  */
 fun Modifier.shimmer(): Modifier = composed {
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
     val transition = rememberInfiniteTransition(label = "shimmer")
     val translateAnim by transition.animateFloat(
         initialValue = -300f,
@@ -150,7 +179,7 @@ fun Modifier.shimmer(): Modifier = composed {
         label = "shimmer"
     )
     
-    val baseColor = MaterialTheme.colorScheme.surfaceVariant
+    val baseColor = if (isDark) Color(0x331E293B) else Color(0x33E2E8F0)
     val shimmerColors = listOf(
         baseColor.copy(alpha = 0.8f),
         baseColor.copy(alpha = 0.3f),
@@ -188,14 +217,17 @@ fun ShinyText(
         label = "shiny"
     )
 
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val softColor = if (MaterialTheme.colorScheme.background == DarkBgStart) DarkTextPrimary else LightTextSecondary
+    
     val brush = Brush.linearGradient(
         colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.secondary,
-            MaterialTheme.colorScheme.primary
+            primaryColor,
+            softColor,
+            primaryColor
         ),
         start = Offset(translateAnim, 0f),
-        end = Offset(translateAnim + 180f, 0f)
+        end = Offset(translateAnim + 250f, 0f)
     )
 
     Text(
@@ -211,14 +243,21 @@ fun ShinyText(
 @Composable
 fun SpotlightCard(
     modifier: Modifier = Modifier,
+    cornerRadius: Dp = 28.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
     var touchPosition by remember { mutableStateOf(Offset.Unspecified) }
-    val spotlightRadius = 150.dp
-    val spotlightColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+    val spotlightRadius = 160.dp
+    val spotlightColor = if (isDark) {
+        DarkPrimaryBlue.copy(alpha = 0.12f)
+    } else {
+        LightPrimaryBlue.copy(alpha = 0.08f)
+    }
 
-    Card(
+    Box(
         modifier = modifier
+            .glassmorphicCard(isDark, cornerRadius)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -247,11 +286,9 @@ fun SpotlightCard(
                         center = touchPosition
                     )
                 }
-            },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp)
+            }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             content()
         }
     }
@@ -265,6 +302,7 @@ fun EmptyState(
     message: String,
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
     val transition = rememberInfiniteTransition(label = "pulse")
     val scale by transition.animateFloat(
         initialValue = 0.94f,
@@ -287,14 +325,14 @@ fun EmptyState(
                 .size(76.dp)
                 .graphicsLayer(scaleX = scale, scaleY = scale)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(if (isDark) DarkSoftBlue else LightSoftBlue),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(36.dp)
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -316,7 +354,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         text = title,
         style = MaterialTheme.typography.titleMedium.copy(
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.secondary
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f)
         ),
         modifier = modifier.padding(vertical = 8.dp)
     )
@@ -324,18 +362,35 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun StatusBadge(status: TokenStatus) {
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
     val (text, bgColor, textColor) = when (status) {
-        TokenStatus.PENDING -> Triple("Pending", WarningOrange.copy(alpha = 0.2f), WarningOrange)
-        TokenStatus.SERVING -> Triple("Serving", SuccessGreen.copy(alpha = 0.2f), SuccessGreen)
-        TokenStatus.COMPLETED -> Triple("Completed", MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), MaterialTheme.colorScheme.primary)
-        TokenStatus.SKIPPED -> Triple("Skipped", ErrorRed.copy(alpha = 0.2f), ErrorRed)
+        TokenStatus.PENDING -> {
+            if (isDark) Triple("Pending", DarkWarningBg, DarkWarningText)
+            else Triple("Pending", LightWarningBg, LightWarningText)
+        }
+        TokenStatus.APPROVED -> {
+            if (isDark) Triple("Approved", Color(0x26818CF8), Color(0xFF818CF8))
+            else Triple("Approved", Color(0xFFEEF2FF), Color(0xFF4F46E5))
+        }
+        TokenStatus.SERVING -> {
+            if (isDark) Triple("Serving", DarkSuccessBg, DarkSuccessText)
+            else Triple("Serving", LightSuccessBg, LightSuccessText)
+        }
+        TokenStatus.COMPLETED -> {
+            if (isDark) Triple("Completed", DarkSoftBlue, DarkPrimaryBlue)
+            else Triple("Completed", LightSoftBlue, LightPrimaryBlue)
+        }
+        TokenStatus.SKIPPED -> {
+            if (isDark) Triple("Skipped", DarkErrorBg, DarkErrorText)
+            else Triple("Skipped", LightErrorBg, LightErrorText)
+        }
     }
 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -354,25 +409,27 @@ fun MetricCard(
     subValue: String = "",
     modifier: Modifier = Modifier
 ) {
-    SpotlightCard(modifier = modifier) {
+    SpotlightCard(modifier = modifier, cornerRadius = 24.dp) {
         Text(
             text = label,
             fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = value,
-            fontSize = 22.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         if (subValue.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = subValue,
                 fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium
             )
         }
     }
@@ -385,22 +442,21 @@ fun LivePhoneAlert(
     type: String,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(12.dp)
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .glassmorphicCard(isDark, cornerRadius = 16.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = type,
@@ -409,11 +465,11 @@ fun LivePhoneAlert(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
                     text = title,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -422,7 +478,7 @@ fun LivePhoneAlert(
                     text = message,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 14.sp
+                    lineHeight = 15.sp
                 )
             }
         }

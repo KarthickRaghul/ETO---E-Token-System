@@ -128,13 +128,29 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val mockNames = listOf("Alice Smith", "Bob Jones", "Charlie Brown", "Diana Prince", "Ethan Hunt", "Fiona Gallagher", "George Clark")
+    private val mockPhones = listOf("9876540001", "9876540002", "9876540003", "9876540004", "9876540005", "9876540006")
+    private val mockSymptoms = listOf("Persistent cough and fever", "Sharp chest pain on exertion", "Red itchy rash on arms", "Mild migraine and sensitivity to light", "Sore throat and body aches")
+    private val mockDiagnoses = mapOf(
+        "Cardiologist" to listOf("Mild Hypertension", "Arrhythmia", "Angina pectoris"),
+        "Pediatrician" to listOf("Acute Bronchitis", "Seasonal Allergies", "Viral Fever"),
+        "Dermatologist" to listOf("Contact Dermatitis", "Eczema flare-up", "Urticaria"),
+        "Physician" to listOf("Common Cold", "Influenza Type A", "Acute Pharyngitis")
+    )
+    private val mockPrescriptions = mapOf(
+        "Cardiologist" to listOf("Amlodipine 5mg daily", "Metoprolol 25mg daily", "Atorvastatin 10mg daily"),
+        "Pediatrician" to listOf("Amoxicillin suspension", "Cetirizine syrup", "Paracetamol drops"),
+        "Dermatologist" to listOf("Hydrocortisone cream 1%", "Cetirizine 10mg", "Desonide lotion"),
+        "Physician" to listOf("Paracetamol 500mg as needed", "Ibuprofen 400mg", "Saline nasal spray")
+    )
+
     // Receptionist actions
     fun approveToken(token: Token) {
         viewModelScope.launch {
-            repository.updateTokenStatus(token.id, "SERVING")
+            repository.updateTokenStatus(token.id, "APPROVED")
             addNotification(
                 title = "Token Approved",
-                message = "Token ${token.tokenNumber} is approved! You are in the active queue for ${token.doctorName}.",
+                message = "Token ${token.tokenNumber} is approved! You are now in the active waiting queue for ${token.doctorName}.",
                 type = "SMS"
             )
         }
@@ -153,12 +169,12 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun callNextPatient(doctorId: String) {
         viewModelScope.launch {
-            val activeTokens = tokens.value.filter { it.doctorId == doctorId && it.status == TokenStatus.PENDING }
+            val activeTokens = tokens.value.filter { it.doctorId == doctorId && it.status == TokenStatus.APPROVED }
             val currentServing = tokens.value.find { it.doctorId == doctorId && it.status == TokenStatus.SERVING }
             
-            // Mark current serving as completed or skipped
+            // Mark current serving as skipped (not completed, doctor finalizes completed)
             if (currentServing != null) {
-                repository.updateTokenStatus(currentServing.id, "COMPLETED")
+                repository.updateTokenStatus(currentServing.id, "SKIPPED")
             }
             
             // Call next
@@ -235,20 +251,96 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
         simulationJob?.cancel()
         simulationJob = viewModelScope.launch {
             while (true) {
-                delay(20000) // progress queue every 20 seconds
+                delay(12000) // progress queue every 12 seconds
                 if (!_isSimulationActive.value) break
                 
-                // Automatically approve a pending token if serving queue is empty
-                val pending = tokens.value.filter { it.status == TokenStatus.PENDING }
-                if (pending.isNotEmpty()) {
-                    val nextApprove = pending.first()
-                    // 50% chance receptionist approves it automatically
-                    if (Math.random() > 0.5) {
-                        repository.updateTokenStatus(nextApprove.id, "SERVING")
+                val r = Math.random()
+
+                // 1. Spawning new patient tokens (30% chance)
+                if (r < 0.3) {
+                    val availableDocs = doctors.value.filter { it.isAvailable }
+                    if (availableDocs.isNotEmpty()) {
+                        val doc = availableDocs.random()
+                        val patientName = mockNames.random()
+                        val patientPhone = mockPhones.random()
+                        val symptoms = mockSymptoms.random()
+                        
+                        val isWalkIn = Math.random() > 0.5
+                        repository.requestToken(patientName, patientPhone, doc.id, symptoms, isWalkIn)
+                        
                         addNotification(
-                            title = "Queue Update (Simulated)",
-                            message = "Token ${nextApprove.tokenNumber} is now being called by ${nextApprove.doctorName}.",
+                            title = if (isWalkIn) "Walk-in Registered (Simulated)" else "Online Appointment Requested (Simulated)",
+                            message = "Patient $patientName registered for ${doc.name}.",
+                            type = if (isWalkIn) "IN_APP" else "PUSH"
+                        )
+                    }
+                }
+                // 2. Approving pending online requests (25% chance)
+                else if (r < 0.55) {
+                    val pendingTokens = tokens.value.filter { it.status == TokenStatus.PENDING }
+                    val oldestPending = pendingTokens.minByOrNull { it.id }
+                    if (oldestPending != null) {
+                        repository.updateTokenStatus(oldestPending.id, "APPROVED")
+                        addNotification(
+                            title = "Appointment Approved (Simulated)",
+                            message = "Token ${oldestPending.tokenNumber} for ${oldestPending.patientName} approved by front desk.",
                             type = "SMS"
+                        )
+                    }
+                }
+                // 3. Simulating doctor consultation completion (20% chance)
+                else if (r < 0.75) {
+                    val servingTokens = tokens.value.filter { it.status == TokenStatus.SERVING }
+                    if (servingTokens.isNotEmpty()) {
+                        val tokenToComplete = servingTokens.random()
+                        val doc = doctors.value.find { it.id == tokenToComplete.doctorId }
+                        val specialty = doc?.specialty ?: "Physician"
+                        val diagnosisList = mockDiagnoses[specialty] ?: mockDiagnoses["Physician"]!!
+                        val prescriptionList = mockPrescriptions[specialty] ?: mockPrescriptions["Physician"]!!
+                        
+                        val diagnosis = diagnosisList.random()
+                        val prescription = prescriptionList.random()
+                        val fee = 300.0 + (System.currentTimeMillis() % 5) * 100
+                        
+                        repository.recordConsultation(tokenToComplete.id, diagnosis, prescription, fee)
+                        
+                        addNotification(
+                            title = "Consultation Complete (Simulated)",
+                            message = "Dr. ${tokenToComplete.doctorName} completed consultation for ${tokenToComplete.patientName}. Bill: ₹${fee.toInt()}.",
+                            type = "SMS"
+                        )
+                    }
+                }
+                // 4. Auto calling next patient if doctor is idle and has waiting list (15% chance)
+                else if (r < 0.9) {
+                    val activeDocs = doctors.value.filter { it.isAvailable }
+                    for (doc in activeDocs) {
+                        val docQueue = tokens.value.filter { it.doctorId == doc.id }
+                        val serving = docQueue.find { it.status == TokenStatus.SERVING }
+                        val approved = docQueue.filter { it.status == TokenStatus.APPROVED }.sortedBy { it.id }
+                        
+                        if (serving == null && approved.isNotEmpty()) {
+                            val next = approved.first()
+                            repository.updateTokenStatus(next.id, "SERVING")
+                            addNotification(
+                                title = "Calling Patient (Simulated)",
+                                message = "Token ${next.tokenNumber} (${next.patientName}): Please proceed to ${next.doctorName}'s room.",
+                                type = "SMS"
+                            )
+                            break
+                        }
+                    }
+                }
+                // 5. Simulating invoice payment (10% chance)
+                else {
+                    val pendingPayments = tokens.value.filter { it.status == TokenStatus.COMPLETED && it.paymentStatus == PaymentStatus.PENDING }
+                    val payment = pendingPayments.minByOrNull { it.id }
+                    if (payment != null) {
+                        repository.recordPayment(payment.id)
+                        addNotification(
+                            title = "Bill Paid (Simulated)",
+                            message = "Payment of ₹${payment.billAmount.toInt()} received for ${payment.patientName} (${payment.tokenNumber}).",
+                            type = "IN_APP"
                         )
                     }
                 }

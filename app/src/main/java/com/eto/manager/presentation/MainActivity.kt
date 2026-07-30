@@ -28,19 +28,25 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.LocalHospital
-import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.SupportAgent
+import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.LocalHospital
+import androidx.compose.material.icons.outlined.MedicalServices
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -56,6 +62,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,23 +73,29 @@ import com.eto.manager.presentation.admin.AdminView
 import com.eto.manager.presentation.components.LivePhoneAlert
 import com.eto.manager.presentation.components.SpotlightCard
 import com.eto.manager.presentation.components.bounceClick
+import com.eto.manager.presentation.components.glassmorphicCard
 import com.eto.manager.presentation.components.magnetEffect
 import com.eto.manager.presentation.doctor.DoctorView
 import com.eto.manager.presentation.patient.PatientView
 import com.eto.manager.presentation.receptionist.ReceptionistView
-import com.eto.manager.presentation.theme.EtoTheme
+import com.eto.manager.presentation.theme.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            EtoTheme {
+            var isDarkTheme by remember { mutableStateOf(false) }
+            EtoTheme(darkTheme = isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val viewModel: EtoViewModel = viewModel()
-                    EtoAppShell(viewModel)
+                    EtoAppShell(
+                        viewModel = viewModel,
+                        isDarkTheme = isDarkTheme,
+                        onThemeToggle = { isDarkTheme = !isDarkTheme }
+                    )
                 }
             }
         }
@@ -90,134 +104,263 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EtoAppShell(viewModel: EtoViewModel) {
+fun EtoAppShell(
+    viewModel: EtoViewModel,
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit
+) {
     val currentRole by viewModel.currentRole.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
     
     var showPhoneSimulator by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var activeTab by remember { mutableStateOf(0) } // 0: Home, 1: Queue, 2: History, 3: Profile
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.LocalHospital,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "ETO Online",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
+
+    // Linear background gradient
+    val backgroundBrush = Brush.verticalGradient(
+        colors = if (isDark) {
+            listOf(DarkBgStart, DarkBgEnd)
+        } else {
+            listOf(LightBgStart, LightBgEnd)
+        }
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundBrush)
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocalHospital,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
                             )
-                        )
-                    }
-                },
-                actions = {
-                    // Role selection badge dropdown
-                    Box(modifier = Modifier.padding(end = 12.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .bounceClick()
-                                .clickable { menuExpanded = true }
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            val icon = when (currentRole) {
-                                UserRole.PATIENT -> Icons.Default.Person
-                                UserRole.RECEPTIONIST -> Icons.Default.SupportAgent
-                                UserRole.DOCTOR -> Icons.Default.MedicalServices
-                                UserRole.ADMIN -> Icons.Default.AdminPanelSettings
-                            }
-                            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = currentRole.name,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.primary
+                                "ETO Online",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        }
+                    },
+                    actions = {
+                        // Dynamic light/dark theme switcher
+                        IconButton(
+                            onClick = onThemeToggle,
+                            modifier = Modifier.bounceClick()
+                        ) {
+                            Icon(
+                                imageVector = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                                contentDescription = "Toggle Theme",
+                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                            )
                         }
 
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
-                        ) {
-                            UserRole.values().forEach { role ->
-                                DropdownMenuItem(
-                                    text = { Text(role.name, fontSize = 12.sp, fontWeight = FontWeight.Medium) },
-                                    onClick = {
-                                        viewModel.setRole(role)
-                                        menuExpanded = false
-                                    }
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        // Role selection dropdown badge
+                        Box(modifier = Modifier.padding(end = 12.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .bounceClick()
+                                    .clickable { menuExpanded = true }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                val icon = when (currentRole) {
+                                    UserRole.PATIENT -> Icons.Outlined.Person
+                                    UserRole.RECEPTIONIST -> Icons.Outlined.SupportAgent
+                                    UserRole.DOCTOR -> Icons.Outlined.MedicalServices
+                                    UserRole.ADMIN -> Icons.Outlined.AdminPanelSettings
+                                }
+                                Icon(
+                                    imageVector = icon, 
+                                    contentDescription = null, 
+                                    tint = MaterialTheme.colorScheme.primary, 
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = currentRole.name,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ExpandMore, 
+                                    contentDescription = null, 
+                                    tint = MaterialTheme.colorScheme.primary, 
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                UserRole.values().forEach { role ->
+                                    DropdownMenuItem(
+                                        text = { Text(role.name, fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                        onClick = {
+                                            viewModel.setRole(role)
+                                            menuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
+            },
+            bottomBar = {
+                BottomFloatingNavBar(
+                    activeTab = activeTab,
+                    onTabSelected = { activeTab = it }
+                )
+            },
+            floatingActionButton = {
+                // SMS Virtual Alerts drawer trigger floating badge
+                Box(
+                    modifier = Modifier.padding(bottom = 80.dp) // Float above navigation bar
+                ) {
+                    FloatingActionButton(
+                        onClick = { showPhoneSimulator = !showPhoneSimulator },
+                        modifier = Modifier
+                            .bounceClick()
+                            .magnetEffect(),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = CircleShape
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "SMS Alerts Manager"
+                            )
+                            if (notifications.isNotEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(top = 2.dp, end = 2.dp)
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Red)
                                 )
                             }
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
-        floatingActionButton = {
-            Box {
-                FloatingActionButton(
-                    onClick = { showPhoneSimulator = !showPhoneSimulator },
-                    modifier = Modifier.bounceClick().magnetEffect(),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                }
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                // Content Switcher dependent on active role AND active bottom tab
+                when (currentRole) {
+                    UserRole.PATIENT -> PatientView(viewModel, activeTab)
+                    UserRole.RECEPTIONIST -> ReceptionistView(viewModel, activeTab)
+                    UserRole.DOCTOR -> DoctorView(viewModel, activeTab)
+                    UserRole.ADMIN -> AdminView(viewModel, activeTab)
+                }
+
+                // Phone SMS alerts panel drawer
+                AnimatedVisibility(
+                    visible = showPhoneSimulator,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Notifications"
+                    VirtualPhoneDrawer(
+                        notifications = notifications,
+                        onClose = { showPhoneSimulator = false }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomFloatingNavBar(
+    activeTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
+    val items = listOf(
+        Triple("Home", Icons.Outlined.Home, 0),
+        Triple("Queue", Icons.Outlined.HourglassEmpty, 1),
+        Triple("History", Icons.Outlined.ReceiptLong, 2),
+        Triple("Profile", Icons.Outlined.Person, 3)
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier
+                .glassmorphicCard(isDark, cornerRadius = 32.dp)
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { (label, icon, index) ->
+                val isActive = activeTab == index
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            if (isActive) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                         )
-                        if (notifications.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(top = 2.dp, end = 2.dp)
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Red)
+                        .clickable { onTabSelected(index) }
+                        .padding(horizontal = if (isActive) 16.dp else 14.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        if (isActive) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 12.sp
+                                )
                             )
                         }
                     }
                 }
-            }
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            // Main views routing
-            when (currentRole) {
-                UserRole.PATIENT -> PatientView(viewModel)
-                UserRole.RECEPTIONIST -> ReceptionistView(viewModel)
-                UserRole.DOCTOR -> DoctorView(viewModel)
-                UserRole.ADMIN -> AdminView(viewModel)
-            }
-
-            // Virtual Phone Notification Simulation Panel overlay
-            AnimatedVisibility(
-                visible = showPhoneSimulator,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                modifier = Modifier.align(Alignment.BottomEnd)
-            ) {
-                VirtualPhoneDrawer(
-                    notifications = notifications,
-                    onClose = { showPhoneSimulator = false }
-                )
             }
         }
     }
@@ -231,24 +374,25 @@ fun VirtualPhoneDrawer(
     SpotlightCard(
         modifier = Modifier
             .width(320.dp)
-            .fillMaxHeight(0.6f)
+            .fillMaxHeight(0.65f)
             .padding(16.dp)
             .border(
                 width = 4.dp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(28.dp)
-            )
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(32.dp)
+            ),
+        cornerRadius = 32.dp
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Status/Speaker Notch simulator
+            // notch simulator
             Box(
                 modifier = Modifier
                     .width(90.dp)
                     .height(18.dp)
                     .clip(RoundedCornerShape(9.dp))
-                    .background(Color.Black)
+                    .background(if (MaterialTheme.colorScheme.background == DarkBgStart) Color.Black else Color(0x33000000))
                     .align(Alignment.CenterHorizontally)
             )
 
@@ -261,20 +405,21 @@ fun VirtualPhoneDrawer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Virtual Phone Alerts",
+                    "Phone Notification Drawer",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 IconButton(onClick = onClose, modifier = Modifier.bounceClick()) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
+                        contentDescription = "Close Simulator Drawer",
                         modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Alert List inside Simulator
             if (notifications.isEmpty()) {
@@ -286,14 +431,14 @@ fun VirtualPhoneDrawer(
                 ) {
                     Text(
                         "No SMS alerts received yet.",
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(notifications) { item ->
                         LivePhoneAlert(
@@ -305,18 +450,5 @@ fun VirtualPhoneDrawer(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun IconButton(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .clickable { onClick() }
-            .padding(6.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,11 +34,10 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -63,21 +63,22 @@ import com.eto.manager.domain.model.Doctor
 import com.eto.manager.domain.model.Token
 import com.eto.manager.domain.model.TokenStatus
 import com.eto.manager.presentation.EtoViewModel
+import com.eto.manager.presentation.components.EmptyState
 import com.eto.manager.presentation.components.SectionHeader
-import com.eto.manager.presentation.components.StatusBadge
 import com.eto.manager.presentation.components.ShinyText
 import com.eto.manager.presentation.components.SpotlightCard
+import com.eto.manager.presentation.components.StatusBadge
 import com.eto.manager.presentation.components.bounceClick
 import com.eto.manager.presentation.components.magnetEffect
-import com.eto.manager.presentation.components.EmptyState
 import com.eto.manager.presentation.components.shimmer
-import com.eto.manager.presentation.theme.ErrorRed
-import com.eto.manager.presentation.theme.SteelBlueMedium
-import com.eto.manager.presentation.theme.SuccessGreen
-import com.eto.manager.presentation.theme.WarningOrange
+import com.eto.manager.presentation.theme.*
 
 @Composable
-fun PatientView(viewModel: EtoViewModel, modifier: Modifier = Modifier) {
+fun PatientView(
+    viewModel: EtoViewModel, 
+    activeTab: Int, 
+    modifier: Modifier = Modifier
+) {
     val name by viewModel.patientName.collectAsState()
     val phone by viewModel.patientPhone.collectAsState()
     val doctors by viewModel.doctors.collectAsState()
@@ -89,299 +90,296 @@ fun PatientView(viewModel: EtoViewModel, modifier: Modifier = Modifier) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedDeptId by remember { mutableStateOf<String?>(null) }
 
-    // Patient tokens
+    // Filter tokens for this patient
     val patientTokens = tokens.filter { it.patientPhone == phone }
-    val activeToken = patientTokens.find { it.status == TokenStatus.PENDING || it.status == TokenStatus.SERVING }
 
-    LazyColumn(
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 16.dp)
     ) {
-        // Patient Profile info
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Patient Identity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { viewModel.patientName.value = it },
-                        label = { Text("Full Name") },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { viewModel.patientPhone.value = it },
-                        label = { Text("Phone Number") },
-                        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors()
-                    )
-                }
-            }
-        }
-
-        // Live Queue Tracker
-        if (activeToken != null) {
-            // Find active queue of the same doctor to compute position ahead
-            val doctorQueue = tokens.filter { it.doctorId == activeToken.doctorId && (it.status == TokenStatus.PENDING || it.status == TokenStatus.SERVING) }
-            val servingToken = doctorQueue.find { it.status == TokenStatus.SERVING }
-            
-            // Patient index in pending queue
-            val pendingQueue = doctorQueue.filter { it.status == TokenStatus.PENDING }.sortedBy { it.id }
-            val positionIndex = pendingQueue.indexOfFirst { it.id == activeToken.id }
-            val aheadCount = if (positionIndex >= 0) positionIndex + (if (servingToken != null) 1 else 0) else 0
-
-            item {
-                val transition = rememberInfiniteTransition(label = "halo")
-                val haloScale1 by transition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.4f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "halo1"
-                )
-                val haloAlpha1 by transition.animateFloat(
-                    initialValue = 0.4f,
-                    targetValue = 0f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "halo1Alpha"
-                )
-
-                val haloScale2 by transition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.4f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, delayMillis = 1000, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "halo2"
-                )
-                val haloAlpha2 by transition.animateFloat(
-                    initialValue = 0.4f,
-                    targetValue = 0f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, delayMillis = 1000, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "halo2Alpha"
-                )
-
-                val progressTarget = if (aheadCount >= 0) {
-                    (1f / (aheadCount + 1).toFloat()).coerceIn(0.15f, 1.0f)
-                } else 1.0f
-
-                val animatedProgress by animateFloatAsState(
-                    targetValue = progressTarget,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessVeryLow),
-                    label = "progress"
-                )
-
-                val sweepColor1 = MaterialTheme.colorScheme.secondary
-                val sweepColor2 = MaterialTheme.colorScheme.primary
-                val sweepBrush = remember(sweepColor1, sweepColor2) {
-                    Brush.sweepGradient(
-                        colors = listOf(sweepColor1, sweepColor2, sweepColor1)
-                    )
-                }
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    shape = RoundedCornerShape(24.dp),
-                    elevation = CardDefaults.cardElevation(8.dp)
+        when (activeTab) {
+            0 -> { // HOME TAB: Browse Departments, Search & Book Doctors
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(24.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        // Glassmorphic Search Bar
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Search doctor specialty, name...", fontSize = 14.sp) },
+                            leadingIcon = { 
+                                Icon(
+                                    imageVector = Icons.Default.Search, 
+                                    contentDescription = null, 
+                                    tint = MaterialTheme.colorScheme.primary
+                                ) 
+                            },
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
+                            shape = RoundedCornerShape(24.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        )
+                    }
+
+                    item {
+                        SectionHeader("Select Department")
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column {
-                                Text("Live Token Tracking", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                Text(activeToken.departmentName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
-                            }
-                            StatusBadge(activeToken.status)
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(160.dp)
-                                .align(Alignment.CenterHorizontally)
-                        ) {
-                            // Pulse Halo Rings
-                            Canvas(modifier = Modifier.size(110.dp)) {
-                                drawCircle(
-                                    color = SteelBlueMedium,
-                                    radius = size.width / 2 * haloScale1,
-                                    alpha = haloAlpha1
-                                )
-                                drawCircle(
-                                    color = SteelBlueMedium,
-                                    radius = size.width / 2 * haloScale2,
-                                    alpha = haloAlpha2
-                                )
+                            // All category pill
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(
+                                            if (selectedDeptId == null) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                        )
+                                        .clickable { selectedDeptId = null }
+                                        .padding(horizontal = 18.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        "All",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = if (selectedDeptId == null) MaterialTheme.colorScheme.onPrimary 
+                                                else MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
 
-                            // Progress ring background and sweep progress
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                // Draw Track
-                                drawCircle(
-                                    color = Color.White.copy(alpha = 0.15f),
-                                    style = Stroke(width = 8.dp.toPx())
-                                )
-                                // Draw Animated Progress Arc with Sweep Gradient
-                                drawArc(
-                                    brush = sweepBrush,
-                                    startAngle = -90f,
-                                    sweepAngle = animatedProgress * 360f,
-                                    useCenter = false,
-                                    style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
-                                )
-                            }
-                            
-                            // Core Card overlay inside ring
-                            Box(
-                                modifier = Modifier
-                                    .size(116.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surface),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("TOKEN", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    ShinyText(
-                                        text = activeToken.tokenNumber,
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                            items(departments) { dept ->
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(
+                                            if (selectedDeptId == dept.id) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                        )
+                                        .clickable { selectedDeptId = dept.id }
+                                        .padding(horizontal = 18.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        dept.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = if (selectedDeptId == dept.id) MaterialTheme.colorScheme.onPrimary 
+                                                else MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                    item {
+                        SectionHeader("Available Specialists")
+                    }
 
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            QueueDetailItem("Dr. Name", activeToken.doctorName)
-                            QueueDetailItem("Serving", servingToken?.tokenNumber ?: "None")
-                            QueueDetailItem("Ahead", "$aheadCount patients")
-                            QueueDetailItem("Est. Wait", "${aheadCount * 15} mins")
+                    // Filtering logic
+                    val filteredDoctors = doctors.filter { doc ->
+                        val matchesSearch = doc.name.contains(searchQuery, ignoreCase = true) || doc.specialty.contains(searchQuery, ignoreCase = true)
+                        val matchesDept = selectedDeptId == null || doc.departmentId == selectedDeptId
+                        matchesSearch && matchesDept
+                    }
+
+                    if (doctors.isEmpty()) {
+                        items(3) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(130.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .shimmer()
+                            )
                         }
+                    } else if (filteredDoctors.isEmpty()) {
+                        item {
+                            EmptyState(message = "No specialists available matching constraints.")
+                        }
+                    } else {
+                        items(filteredDoctors) { doc ->
+                            DoctorCard(
+                                doctor = doc,
+                                isSelected = selectedDocId == doc.id,
+                                symptoms = symptoms,
+                                onSelect = { viewModel.selectDoctor(doc.id) },
+                                onCancel = { viewModel.selectDoctor(null) },
+                                onSymptomsChange = { viewModel.symptomsInput.value = it },
+                                onSubmit = { viewModel.requestToken() }
+                            )
+                        }
+                    }
+                    
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp)) // padding at the bottom for floating nav
                     }
                 }
             }
-        }
 
-        // Search & Book Appointment (only if no active token to avoid double bookings in demo)
-        if (activeToken == null) {
-            item {
-                SectionHeader("Select Department")
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+            1 -> { // QUEUE TAB: Active Token Tracking
+                val activeTokens = patientTokens.filter { it.status == TokenStatus.PENDING || it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // All Category
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (selectedDeptId == null) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surface
-                            )
-                            .clickable { selectedDeptId = null }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "All",
-                            color = if (selectedDeptId == null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                            text = "My Active Tokens",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
                         )
                     }
 
-                    departments.forEach { dept ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (selectedDeptId == dept.id) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surface
-                                )
-                                .clickable { selectedDeptId = dept.id }
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                dept.name,
-                                color = if (selectedDeptId == dept.id) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    if (activeTokens.isEmpty()) {
+                        item {
+                            EmptyState(message = "No active booking token found.\nSwitch to the Home tab to book an appointment.")
+                        }
+                    } else {
+                        items(activeTokens) { activeToken ->
+                            ActiveTokenCard(
+                                activeToken = activeToken,
+                                tokens = tokens,
+                                isDark = isDark
                             )
                         }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
             }
 
-            item {
-                SectionHeader("Available Doctors")
-            }
+            2 -> { // HISTORY TAB: Consultations & Medical Prescription History
+                val historyTokens = patientTokens.filter { it.status == TokenStatus.COMPLETED }
 
-            val filteredDoctors = doctors.filter { doc ->
-                val matchesSearch = doc.name.contains(searchQuery, ignoreCase = true) || doc.specialty.contains(searchQuery, ignoreCase = true)
-                val matchesDept = selectedDeptId == null || doc.departmentId == selectedDeptId
-                matchesSearch && matchesDept
-            }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Prescription & History",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        )
+                    }
 
-            if (doctors.isEmpty()) {
-                items(3) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(110.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .shimmer()
-                    )
-                }
-            } else if (filteredDoctors.isEmpty()) {
-                item {
-                    EmptyState(message = "No doctors available matching the criteria.")
-                }
-            } else {
-                items(filteredDoctors) { doc ->
-                    DoctorCard(
-                        doctor = doc,
-                        isSelected = selectedDocId == doc.id,
-                        symptoms = symptoms,
-                        onSelect = { viewModel.selectDoctor(doc.id) },
-                        onCancel = { viewModel.selectDoctor(null) },
-                        onSymptomsChange = { viewModel.symptomsInput.value = it },
-                        onSubmit = { viewModel.requestToken() }
-                    )
+                    if (historyTokens.isEmpty()) {
+                        item {
+                            EmptyState(message = "No completed consultations found in your history log.")
+                        }
+                    } else {
+                        items(historyTokens) { history ->
+                            HistoryCard(token = history)
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
                 }
             }
-        }
 
-        // Consultations & Prescription History
-        val historyTokens = patientTokens.filter { it.status == TokenStatus.COMPLETED }
-        if (historyTokens.isNotEmpty()) {
-            item {
-                SectionHeader("Medical & Consultation History")
-            }
-            items(historyTokens) { history ->
-                HistoryCard(token = history)
+            3 -> { // PROFILE TAB: Edit Patient Identity details
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Patient Identity Profile",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        )
+                    }
+
+                    item {
+                        SpotlightCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            cornerRadius = 28.dp
+                        ) {
+                            Text(
+                                "Profile Details", 
+                                style = MaterialTheme.typography.titleMedium, 
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            OutlinedTextField(
+                                value = name,
+                                onValueChange = { viewModel.patientName.value = it },
+                                label = { Text("Full Name", fontSize = 13.sp) },
+                                leadingIcon = { 
+                                    Icon(
+                                        imageVector = Icons.Default.Person, 
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    ) 
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedTextField(
+                                value = phone,
+                                onValueChange = { viewModel.patientPhone.value = it },
+                                label = { Text("Mobile Number", fontSize = 13.sp) },
+                                leadingIcon = { 
+                                    Icon(
+                                        imageVector = Icons.Default.Phone, 
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    ) 
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
+                }
             }
         }
     }
@@ -390,9 +388,19 @@ fun PatientView(viewModel: EtoViewModel, modifier: Modifier = Modifier) {
 @Composable
 fun QueueDetailItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(
+            text = label, 
+            fontSize = 11.sp, 
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+            text = value, 
+            fontSize = 14.sp, 
+            fontWeight = FontWeight.Bold, 
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -407,7 +415,8 @@ fun DoctorCard(
     onSubmit: () -> Unit
 ) {
     SpotlightCard(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 28.dp
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -425,25 +434,49 @@ fun DoctorCard(
                     Icon(
                         imageVector = Icons.Default.LocalHospital,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(doctor.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("${doctor.specialty} • ${doctor.departmentName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = doctor.name, 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${doctor.specialty} • ${doctor.departmentName}", 
+                        fontSize = 12.sp, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
+                Icon(
+                    imageVector = Icons.Default.Star, 
+                    contentDescription = null, 
+                    tint = Color(0xFFFFB300), 
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("${doctor.rating}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(
+                    text = "${doctor.rating}", 
+                    fontWeight = FontWeight.Bold, 
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("Avg Consult Time: ${doctor.averageServiceTimeMinutes} min", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = "Avg consult: ${doctor.averageServiceTimeMinutes} mins", 
+                fontSize = 12.sp, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Text(
                 text = if (doctor.isAvailable) "Available Today" else "Unavailable",
                 fontSize = 12.sp,
@@ -457,26 +490,40 @@ fun DoctorCard(
                 OutlinedTextField(
                     value = symptoms,
                     onValueChange = onSymptomsChange,
-                    label = { Text("Pre-consultation Symptoms / Notes") },
+                    label = { Text("Describe Symptoms / Special Requests", fontSize = 13.sp) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors()
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                    )
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = onCancel,
                         modifier = Modifier.bounceClick(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = MaterialTheme.colorScheme.onSurface)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent, 
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
                     ) {
-                        Text("Cancel")
+                        Text("Cancel", fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = onSubmit,
-                        modifier = Modifier.bounceClick().magnetEffect(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        enabled = symptoms.isNotBlank(),
+                        modifier = Modifier
+                            .bounceClick()
+                            .magnetEffect(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text("Book Token")
+                        Text("Book Token", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -490,9 +537,13 @@ fun DoctorCard(
                     .fillMaxWidth()
                     .bounceClick()
                     .magnetEffect(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Select Doctor")
+                Text("Select Doctor", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -500,60 +551,279 @@ fun DoctorCard(
 
 @Composable
 fun HistoryCard(token: Token) {
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
+
     SpotlightCard(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 24.dp
     ) {
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column {
-                Text(token.doctorName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(token.departmentName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = token.doctorName, 
+                    fontWeight = FontWeight.Bold, 
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = token.departmentName, 
+                    fontSize = 12.sp, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(SuccessGreen.copy(alpha = 0.15f))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (isDark) DarkSuccessBg else LightSuccessBg
+                    )
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Text("Completed", fontSize = 11.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
+                Text(
+                    "Completed", 
+                    fontSize = 10.sp, 
+                    color = if (isDark) DarkSuccessText else LightSuccessText, 
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("Symptoms: ${token.symptoms}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "Symptoms: ${token.symptoms}", 
+            fontSize = 12.sp, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         
         if (token.diagnosis != null) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Row {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Assignment,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Column {
-                    Text("Diagnosis: ${token.diagnosis}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                    Text("Prescription: ${token.prescription}", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Diagnosis: ${token.diagnosis}", 
+                        fontSize = 13.sp, 
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Prescription: ${token.prescription}", 
+                        fontSize = 13.sp, 
+                        color = MaterialTheme.colorScheme.primary, 
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
         
         if (token.billAmount > 0) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Consultation Fee: ₹${token.billAmount}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Consultation Fee: ₹${token.billAmount}", 
+                    fontSize = 12.sp, 
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Text(
                     text = if (token.paymentStatus == com.eto.manager.domain.model.PaymentStatus.PAID) "Paid" else "Payment Pending",
                     fontSize = 12.sp,
-                    color = if (token.paymentStatus == com.eto.manager.domain.model.PaymentStatus.PAID) SuccessGreen else WarningOrange,
+                    color = if (token.paymentStatus == com.eto.manager.domain.model.PaymentStatus.PAID) SuccessGreen else Color(0xFFD97706),
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun ActiveTokenCard(
+    activeToken: Token,
+    tokens: List<Token>,
+    isDark: Boolean
+) {
+    val doctorQueue = tokens.filter { it.doctorId == activeToken.doctorId && (it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING) }
+    val servingToken = doctorQueue.find { it.status == TokenStatus.SERVING }
+    val pendingQueue = doctorQueue.filter { it.status == TokenStatus.APPROVED }.sortedBy { it.id }
+    val positionIndex = pendingQueue.indexOfFirst { it.id == activeToken.id }
+    val aheadCount = if (positionIndex >= 0) positionIndex + (if (servingToken != null) 1 else 0) else 0
+
+    val transition = rememberInfiniteTransition(label = "halo")
+    val haloScale1 by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "halo1"
+    )
+    val haloAlpha1 by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "halo1Alpha"
+    )
+
+    val haloScale2 by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, delayMillis = 1100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "halo2"
+    )
+    val haloAlpha2 by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, delayMillis = 1100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "halo2Alpha"
+    )
+
+    val progressTarget = if (aheadCount >= 0) {
+        (1f / (aheadCount + 1).toFloat()).coerceIn(0.15f, 1.0f)
+    } else 1.0f
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressTarget,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessVeryLow),
+        label = "progress"
+    )
+
+    val sweepColor1 = MaterialTheme.colorScheme.primary
+    val sweepColor2 = MaterialTheme.colorScheme.secondary
+    val sweepBrush = remember(sweepColor1, sweepColor2) {
+        Brush.sweepGradient(
+            colors = listOf(sweepColor1, sweepColor2, sweepColor1)
+        )
+    }
+
+    SpotlightCard(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        cornerRadius = 32.dp
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    activeToken.doctorName, 
+                    style = MaterialTheme.typography.titleMedium, 
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    activeToken.departmentName, 
+                    style = MaterialTheme.typography.bodyMedium, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            StatusBadge(activeToken.status)
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Circular tracker container
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(170.dp)
+                .align(Alignment.CenterHorizontally)
+        ) {
+            // Fading Halo animations
+            Canvas(modifier = Modifier.size(120.dp)) {
+                drawCircle(
+                    color = sweepColor2,
+                    radius = size.width / 2 * haloScale1,
+                    alpha = haloAlpha1
+                )
+                drawCircle(
+                    color = sweepColor2,
+                    radius = size.width / 2 * haloScale2,
+                    alpha = haloAlpha2
+                )
+            }
+
+            // Outer track & progress arc
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                // Track Background
+                drawCircle(
+                    color = sweepColor1.copy(alpha = 0.08f),
+                    style = Stroke(width = 8.dp.toPx())
+                )
+                // Sweep Arc
+                drawArc(
+                    brush = sweepBrush,
+                    startAngle = -90f,
+                    sweepAngle = animatedProgress * 360f,
+                    useCenter = false,
+                    style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
+            
+            // Inner capsule circle
+            Box(
+                modifier = Modifier
+                    .size(122.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isDark) Color(0xFF1E293B) else Color(0xFFFFFFFF)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "ACTIVE TOKEN", 
+                        fontSize = 9.sp, 
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    ShinyText(
+                        text = activeToken.tokenNumber,
+                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            QueueDetailItem("Now Serving", servingToken?.tokenNumber ?: "None")
+            QueueDetailItem("Ahead Of You", "$aheadCount Patients")
+            QueueDetailItem("Est. Wait Time", "${aheadCount * 12} mins")
         }
     }
 }

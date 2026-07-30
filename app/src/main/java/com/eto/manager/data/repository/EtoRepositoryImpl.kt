@@ -87,7 +87,7 @@ class EtoRepositoryImpl(
             doctorName = doctor.name,
             departmentName = doctor.departmentName,
             symptoms = symptoms,
-            status = if (isWalkIn) "SERVING" else "PENDING", // Walk-in is approved by default
+            status = if (isWalkIn) "APPROVED" else "PENDING", // Walk-in is approved by default
             queuePosition = queueCount + 1,
             estimatedWaitMinutes = estWait,
             createdAt = System.currentTimeMillis()
@@ -186,6 +186,7 @@ class EtoRepositoryImpl(
         departmentName = departmentName,
         symptoms = symptoms,
         status = when (status) {
+            "APPROVED" -> TokenStatus.APPROVED
             "SERVING" -> TokenStatus.SERVING
             "COMPLETED" -> TokenStatus.COMPLETED
             "SKIPPED" -> TokenStatus.SKIPPED

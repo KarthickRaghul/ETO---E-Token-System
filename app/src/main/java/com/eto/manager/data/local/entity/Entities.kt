@@ -33,7 +33,7 @@ data class TokenEntity(
     val doctorName: String,
     val departmentName: String,
     val symptoms: String,
-    val status: String, // PENDING, SERVING, COMPLETED, SKIPPED
+    val status: String, // PENDING, APPROVED, SERVING, COMPLETED, SKIPPED
     val queuePosition: Int,
     val estimatedWaitMinutes: Int,
     val createdAt: Long,
