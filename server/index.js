@@ -68,6 +68,7 @@ async function initDatabase() {
         prescription TEXT,
         bill_amount NUMERIC(10, 2) DEFAULT 0.0,
         payment_status VARCHAR(50) DEFAULT 'PENDING',
+        queue_position INT DEFAULT 1,
         estimated_wait_minutes INT DEFAULT 0,
         created_at BIGINT NOT NULL
       );
@@ -193,6 +194,7 @@ app.get('/api/tokens', async (req, res) => {
       prescription: r.prescription,
       billAmount: parseFloat(r.bill_amount),
       paymentStatus: r.payment_status,
+      queuePosition: parseInt(r.queue_position, 10) || 1,
       estimatedWaitMinutes: r.estimated_wait_minutes,
       createdAt: parseInt(r.created_at, 10)
     }));

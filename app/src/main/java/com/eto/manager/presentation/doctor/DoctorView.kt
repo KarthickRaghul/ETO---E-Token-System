@@ -68,14 +68,7 @@ fun DoctorView(
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. Doctor Greeting Header
-            DoctorGreetingHeader(
-                currentDoctor = currentDoctor,
-                doctors = doctors,
-                viewModel = viewModel,
-                onNotificationClick = onNotificationClick,
-                onProfileClick = onProfileClick
-            )
+            Spacer(modifier = Modifier.height(4.dp))
 
             Spacer(modifier = Modifier.height(24.dp))
 

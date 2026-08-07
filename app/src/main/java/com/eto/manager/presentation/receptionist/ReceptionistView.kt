@@ -2,47 +2,18 @@ package com.eto.manager.presentation.receptionist
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Payment
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SupportAgent
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,7 +27,6 @@ import com.eto.manager.domain.model.Token
 import com.eto.manager.domain.model.TokenStatus
 import com.eto.manager.presentation.EtoViewModel
 import com.eto.manager.presentation.components.EmptyState
-import com.eto.manager.presentation.components.SectionHeader
 import com.eto.manager.presentation.components.SpotlightCard
 import com.eto.manager.presentation.components.bounceClick
 import com.eto.manager.presentation.components.magnetEffect
@@ -65,8 +35,10 @@ import com.eto.manager.presentation.theme.*
 
 @Composable
 fun ReceptionistView(
-    viewModel: EtoViewModel, 
-    activeTab: Int, 
+    viewModel: EtoViewModel,
+    activeTab: Int,
+    showWalkInDialog: Boolean,
+    onDismissWalkIn: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val doctors by viewModel.doctors.collectAsState()
@@ -80,80 +52,64 @@ fun ReceptionistView(
             .padding(horizontal = 16.dp)
     ) {
         when (activeTab) {
-            0 -> { // HOME TAB: Online Requests & Walk-in Form
-                var showWalkInForm by remember { mutableStateOf(false) }
+            0 -> { // QUEUE TAB: Flat list of all active queue patients matching screenshot
+                val activeQueue = tokens.filter { it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING }
+                    .sortedBy { it.id }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (showWalkInForm) "Register Walk-in" else "Online Token Requests",
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
+                        Text(
+                            text = "Current Queue",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
                             )
-
-                            // Quick Toggle Switch
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(MaterialTheme.colorScheme.primaryContainer)
-                                    .clickable { showWalkInForm = !showWalkInForm }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = if (showWalkInForm) "Show Requests" else "Register Patient",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                        )
                     }
 
-                    if (showWalkInForm) {
+                    if (activeQueue.isEmpty()) {
                         item {
-                            WalkInForm(doctors = doctors, onRegister = { name, phone, docId, symptoms ->
-                                viewModel.registerWalkIn(name, phone, docId, symptoms)
-                                showWalkInForm = false
-                            })
+                            EmptyState(message = "No patients in queue currently.")
                         }
                     } else {
-                        val requests = tokens.filter { it.status == TokenStatus.PENDING }
-                        if (requests.isEmpty()) {
-                            item {
-                                EmptyState(message = "No pending online token requests.")
-                            }
-                        } else {
-                            items(requests) { req ->
-                                RequestCard(
-                                    token = req,
-                                    onApprove = { viewModel.approveToken(req) },
-                                    onReject = { viewModel.rejectToken(req) }
+                        items(activeQueue) { token ->
+                            var showActionsDialog by remember { mutableStateOf(false) }
+
+                            ReceptionistQueuePatientCard(
+                                token = token,
+                                isDark = isDark,
+                                onClick = { showActionsDialog = true }
+                            )
+
+                            if (showActionsDialog) {
+                                QueueActionDialog(
+                                    token = token,
+                                    onDismiss = { showActionsDialog = false },
+                                    onCallNext = {
+                                        viewModel.callNextPatient(token.doctorId)
+                                        showActionsDialog = false
+                                    },
+                                    onSkip = {
+                                        viewModel.skipPatient(token)
+                                        showActionsDialog = false
+                                    }
                                 )
                             }
                         }
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(80.dp))
+                        Spacer(modifier = Modifier.height(90.dp))
                     }
                 }
             }
 
-            1 -> { // QUEUE TAB: Active Doctor Queue progressions
-                val activeQueues = doctors.filter { doc ->
-                    tokens.any { it.doctorId == doc.id && (it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING) }
-                }
+            1 -> { // REQUESTS TAB: Online Requests
+                val requests = tokens.filter { it.status == TokenStatus.PENDING }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -162,37 +118,35 @@ fun ReceptionistView(
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Clinic Queue Manager",
-                            style = MaterialTheme.typography.headlineMedium.copy(
+                            text = "Online Token Requests",
+                            style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                         )
                     }
 
-                    if (activeQueues.isEmpty()) {
+                    if (requests.isEmpty()) {
                         item {
-                            EmptyState(message = "All doctor queues are currently empty.")
+                            EmptyState(message = "No pending online requests.")
                         }
                     } else {
-                        items(activeQueues) { doc ->
-                            val docQueue = tokens.filter { it.doctorId == doc.id && (it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING) }
-                            QueueControlCard(
-                                doctor = doc,
-                                queue = docQueue,
-                                onCallNext = { viewModel.callNextPatient(doc.id) },
-                                onSkip = { viewModel.skipPatient(it) }
+                        items(requests) { req ->
+                            RequestCard(
+                                token = req,
+                                onApprove = { viewModel.approveToken(req) },
+                                onReject = { viewModel.rejectToken(req) }
                             )
                         }
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(80.dp))
+                        Spacer(modifier = Modifier.height(90.dp))
                     }
                 }
             }
 
-            2 -> { // HISTORY TAB: Billing & Invoices
+            2 -> { // BILLS TAB: Pending consultation invoices
                 val pendingBills = tokens.filter { it.status == TokenStatus.COMPLETED && it.paymentStatus == PaymentStatus.PENDING }
 
                 LazyColumn(
@@ -203,7 +157,7 @@ fun ReceptionistView(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Pending Invoices",
-                            style = MaterialTheme.typography.headlineMedium.copy(
+                            style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
                             )
@@ -224,108 +178,190 @@ fun ReceptionistView(
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
-                }
-            }
-
-            3 -> { // PROFILE TAB: Shift Stats
-                val completedToday = tokens.filter { it.status == TokenStatus.COMPLETED }
-                val totalPayments = completedToday.filter { it.paymentStatus == PaymentStatus.PAID }.sumOf { it.billAmount }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Front Desk Shift Stats",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        )
-                    }
-
-                    item {
-                        SpotlightCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            cornerRadius = 28.dp
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(52.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.SupportAgent,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column {
-                                    Text(
-                                        "Reception Desk #1",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        "Shift: Morning (08:00 AM - 04:00 PM)",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .glassmorphicCard(isDark, cornerRadius = 16.dp)
-                                        .padding(12.dp)
-                                ) {
-                                    Column {
-                                        Text("Registered Today", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text("${tokens.size} Patients", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .glassmorphicCard(isDark, cornerRadius = 16.dp)
-                                        .padding(12.dp)
-                                ) {
-                                    Column {
-                                        Text("Collected Today", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text("₹$totalPayments", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
+                        Spacer(modifier = Modifier.height(90.dp))
                     }
                 }
             }
         }
+
+        // Walk-in Registration form Dialog triggered by FAB
+        if (showWalkInDialog) {
+            AlertDialog(
+                onDismissRequest = onDismissWalkIn,
+                title = null,
+                text = {
+                    WalkInForm(
+                        doctors = doctors,
+                        onRegister = { name, phone, docId, symptoms ->
+                            viewModel.registerWalkIn(name, phone, docId, symptoms)
+                            onDismissWalkIn()
+                        }
+                    )
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = onDismissWalkIn) {
+                        Text("Cancel", fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun ReceptionistQueuePatientCard(
+    token: Token,
+    isDark: Boolean,
+    onClick: () -> Unit
+) {
+    val colorIndex = remember(token.id) { token.id.toInt().coerceAtLeast(0) }
+    val colorPairs = listOf(
+        Pair(Color(0xFFEFF6FF), Color(0xFF2563EB)), // Blue
+        Pair(Color(0xFFECFDF5), Color(0xFF059669)), // Green
+        Pair(Color(0xFFF5F3FF), Color(0xFF7C3AED)), // Purple
+        Pair(Color(0xFFFEF3C7), Color(0xFFD97706)), // Orange
+        Pair(Color(0xFFFDF2F8), Color(0xFFDB2777)), // Pink
+        Pair(Color(0xFFF0FDFA), Color(0xFF0D9488))  // Teal
+    )
+    val colorPair = colorPairs[colorIndex % colorPairs.size]
+    val avatarBg = colorPair.first
+    val avatarText = colorPair.second
+
+    val initials = remember(token.patientName) {
+        val parts = token.patientName.trim().split(" ")
+        if (parts.size >= 2) {
+            "${parts[0].firstOrNull() ?: 'P'}${parts[1].firstOrNull() ?: 'T'}"
+        } else {
+            token.patientName.take(2).uppercase()
+        }
+    }
+
+    val simulatedAge = remember(token.id) { (token.id % 40 + 20).toInt() }
+    val simulatedGender = remember(token.id) { if (token.id % 2L == 0L) "Male" else "Female" }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isDark) Color(0xFF1E293B).copy(alpha = 0.6f) else Color.White)
+            .border(
+                1.dp,
+                if (isDark) Color(0xFF334155).copy(alpha = 0.4f) else Color(0xFFEFF6FF),
+                RoundedCornerShape(20.dp)
+            )
+            .clickable { onClick() }
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(avatarBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initials,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = avatarText
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Patient Info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = token.patientName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "$simulatedAge • $simulatedGender",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = token.departmentName,
+                    fontSize = 12.sp,
+                    color = avatarText,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Right side: Token Number
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = token.tokenNumber,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2563EB)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (token.status == TokenStatus.SERVING) "Serving" else "In Queue",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+        }
+
+        // Top right status indicator dot
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(avatarText)
+                .align(Alignment.TopEnd)
+        )
+    }
+}
+
+@Composable
+fun QueueActionDialog(
+    token: Token,
+    onDismiss: () -> Unit,
+    onCallNext: () -> Unit,
+    onSkip: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Manage ${token.patientName}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        },
+        text = {
+            Text(
+                text = "Perform operations for token ${token.tokenNumber} assigned to ${token.doctorName}.",
+                fontSize = 14.sp
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onCallNext,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Call Next", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onSkip) {
+                Text("Skip Patient", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }
 
 @Composable
@@ -356,15 +392,15 @@ fun RequestCard(token: Token, onApprove: () -> Unit, onReject: () -> Unit) {
         }
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Assign Doctor: ${token.doctorName} (${token.departmentName})", 
-            fontSize = 13.sp, 
+            text = "Assign Doctor: ${token.doctorName} (${token.departmentName})",
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "Symptoms: ${token.symptoms}", 
-            fontSize = 12.sp, 
+            text = "Symptoms: ${token.symptoms}",
+            fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -520,119 +556,6 @@ fun WalkInForm(doctors: List<Doctor>, onRegister: (String, String, String, Strin
 }
 
 @Composable
-fun QueueControlCard(
-    doctor: Doctor,
-    queue: List<Token>,
-    onCallNext: () -> Unit,
-    onSkip: (Token) -> Unit
-) {
-    val serving = queue.find { it.status == TokenStatus.SERVING }
-    val pending = queue.filter { it.status == TokenStatus.APPROVED }
-
-    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
-
-    SpotlightCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(doctor.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
-                Text("${doctor.specialty} • Active Queue", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            Button(
-                onClick = onCallNext,
-                enabled = pending.isNotEmpty() || serving != null,
-                modifier = Modifier
-                    .bounceClick()
-                    .magnetEffect(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Call Next", fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                .padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("Now Serving", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = serving?.let { "${it.patientName} (${it.tokenNumber})" } ?: "Idle (waiting)",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = if (serving != null) {
-                            if (isDark) DarkSuccessText else LightSuccessText
-                        } else MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (serving != null) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isDark) DarkSuccessBg else LightSuccessBg)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text("Active", fontSize = 10.sp, color = if (isDark) DarkSuccessText else LightSuccessText, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        if (pending.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Waiting List (${pending.size} patients)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Spacer(modifier = Modifier.height(6.dp))
-            pending.forEach { tk ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("${tk.patientName} (${tk.tokenNumber})", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Symptoms: ${tk.symptoms}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(
-                        onClick = { onSkip(tk) },
-                        modifier = Modifier.bounceClick()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close, 
-                            contentDescription = "Skip", 
-                            tint = if (isDark) DarkErrorText else LightErrorText,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun BillInvoiceCard(token: Token, onCollectPayment: () -> Unit) {
     val isDark = MaterialTheme.colorScheme.background == DarkBgStart
 
@@ -657,15 +580,15 @@ fun BillInvoiceCard(token: Token, onCollectPayment: () -> Unit) {
         }
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "Diagnosis: ${token.diagnosis}", 
-            fontSize = 13.sp, 
+            text = "Diagnosis: ${token.diagnosis}",
+            fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = "Prescription: ${token.prescription}", 
-            fontSize = 13.sp, 
-            color = MaterialTheme.colorScheme.primary, 
+            text = "Prescription: ${token.prescription}",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(16.dp))
