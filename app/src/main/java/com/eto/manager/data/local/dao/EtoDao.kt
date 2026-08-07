@@ -23,6 +23,9 @@ interface DoctorDao {
 
     @Query("SELECT * FROM doctors WHERE id = :id LIMIT 1")
     suspend fun getDoctorById(id: String): DoctorEntity?
+
+    @Query("UPDATE doctors SET isAvailable = :isAvailable WHERE id = :id")
+    suspend fun updateAvailability(id: String, isAvailable: Boolean)
 }
 
 @Dao
@@ -56,6 +59,9 @@ interface TokenDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertToken(token: TokenEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTokens(tokens: List<TokenEntity>)
 
     @Update
     suspend fun updateToken(token: TokenEntity)

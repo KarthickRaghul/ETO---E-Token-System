@@ -25,3 +25,9 @@ Thumbs.db
 # Project-specific temporary/metadata files
 .codegraph/
 .omo/
+
+# Server backend files
+server/node_modules/
+server/db_data/
+server/.env
+server/npm-debug.log

@@ -26,4 +26,5 @@ interface EtoRepository {
     suspend fun recordPayment(tokenId: Long)
     suspend fun seedInitialData()
     suspend fun clearAll()
+    suspend fun updateDoctorAvailability(doctorId: String, isAvailable: Boolean)
 }

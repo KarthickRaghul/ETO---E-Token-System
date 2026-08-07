@@ -107,6 +107,12 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
         _selectedDoctorForView.value = doctorId
     }
 
+    fun toggleDoctorAvailability(doctorId: String, isAvailable: Boolean) {
+        viewModelScope.launch {
+            repository.updateDoctorAvailability(doctorId, isAvailable)
+        }
+    }
+
     // Patient actions
     fun requestToken() {
         val name = patientName.value

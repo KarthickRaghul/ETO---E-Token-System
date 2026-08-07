@@ -39,6 +39,8 @@ import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.LocalHospital
 import androidx.compose.material.icons.outlined.MedicalServices
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.SupportAgent
@@ -136,7 +138,7 @@ fun EtoAppShell(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                if (currentRole != UserRole.PATIENT) {
+                if (currentRole != UserRole.PATIENT && currentRole != UserRole.DOCTOR) {
                     TopAppBar(
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -255,7 +257,12 @@ fun EtoAppShell(
                         onNotificationClick = { showPhoneSimulator = !showPhoneSimulator }
                     )
                     UserRole.RECEPTIONIST -> ReceptionistView(viewModel, activeTab)
-                    UserRole.DOCTOR -> DoctorView(viewModel, activeTab)
+                    UserRole.DOCTOR -> DoctorView(
+                        viewModel = viewModel,
+                        activeTab = activeTab,
+                        onNotificationClick = { showPhoneSimulator = !showPhoneSimulator },
+                        onProfileClick = { activeTab = 2 }
+                    )
                     UserRole.ADMIN -> AdminView(viewModel, activeTab)
                 }
 
@@ -287,6 +294,11 @@ fun BottomFloatingNavBar(
         UserRole.PATIENT -> listOf(
             Triple("Home", Icons.Outlined.Home, 0),
             Triple("My Appointments", Icons.Outlined.CalendarToday, 1)
+        )
+        UserRole.DOCTOR -> listOf(
+            Triple("Patients", Icons.Outlined.People, 0),
+            Triple("Patient Review", Icons.Outlined.Assignment, 1),
+            Triple("Profile", Icons.Outlined.Person, 2)
         )
         else -> listOf(
             Triple("Home", Icons.Outlined.Home, 0),

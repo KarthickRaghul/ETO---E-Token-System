@@ -49,6 +49,13 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import com.eto.manager.presentation.UserRole
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import org.osmdroid.config.Configuration
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import androidx.compose.foundation.border
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -503,7 +510,11 @@ fun PatientView(
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
-                            // Map Canvas Card
+                            // Map Card using OpenStreetMap
+                            val context = LocalContext.current
+                            LaunchedEffect(Unit) {
+                                Configuration.getInstance().userAgentValue = context.packageName
+                            }
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -511,58 +522,26 @@ fun PatientView(
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9))
                             ) {
-                                Canvas(modifier = Modifier.fillMaxSize()) {
-                                    // parks
-                                    drawRoundRect(
-                                        color = if (isDark) Color(0xFF0F172A) else Color(0xFFDEF7EC),
-                                        topLeft = Offset(40f, 60f),
-                                        size = Size(120f, 80f),
-                                        cornerRadius = CornerRadius(8f)
-                                    )
-                                    drawRoundRect(
-                                        color = if (isDark) Color(0xFF0F172A) else Color(0xFFDEF7EC),
-                                        topLeft = Offset(400f, 150f),
-                                        size = Size(200f, 90f),
-                                        cornerRadius = CornerRadius(8f)
-                                    )
-                                    drawRoundRect(
-                                        color = if (isDark) Color(0xFF0F172A) else Color(0xFFDEF7EC),
-                                        topLeft = Offset(700f, 40f),
-                                        size = Size(100f, 120f),
-                                        cornerRadius = CornerRadius(8f)
-                                    )
+                                AndroidView(
+                                    factory = { ctx ->
+                                        MapView(ctx).apply {
+                                            setMultiTouchControls(true)
+                                            controller.setZoom(15.0)
+                                            // Center on Chennai coordinates
+                                            val mapCenter = GeoPoint(13.0827, 80.2707)
+                                            controller.setCenter(mapCenter)
 
-                                    // grid roads
-                                    val roadColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-                                    drawLine(color = roadColor, start = Offset(0f, 140f), end = Offset(size.width, 140f), strokeWidth = 14f)
-                                    drawLine(color = roadColor, start = Offset(240f, 0f), end = Offset(240f, size.height), strokeWidth = 14f)
-                                    drawLine(color = roadColor, start = Offset(580f, 0f), end = Offset(580f, size.height), strokeWidth = 14f)
-                                    drawLine(color = roadColor, start = Offset(0f, 230f), end = Offset(size.width, 230f), strokeWidth = 14f)
-                                }
-
-                                // Pulsing location pin
-                                Box(
-                                    modifier = Modifier.align(Alignment.Center).offset(x = (-30).dp, y = (-10).dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0x263B82F6))
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .size(10.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF3B82F6))
-                                    )
-                                }
-
-                                HospitalMapPin(text = "H", modifier = Modifier.align(Alignment.TopCenter).offset(x = (-30).dp, y = 20.dp), isBlue = true)
-                                HospitalMapPin(text = "H", modifier = Modifier.align(Alignment.CenterStart).offset(x = 50.dp, y = (-20).dp), isBlue = false)
-                                HospitalMapPin(text = "H", modifier = Modifier.align(Alignment.CenterEnd).offset(x = (-60).dp, y = (-20).dp), isBlue = false)
-                                HospitalMapPin(text = "H", modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-100).dp, y = (-15).dp), isBlue = false)
+                                            // Add ETO Hospital Center marker
+                                            val marker = Marker(this).apply {
+                                                position = mapCenter
+                                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                                title = "ETO Hospital Center"
+                                            }
+                                            overlays.add(marker)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
                         }
 
