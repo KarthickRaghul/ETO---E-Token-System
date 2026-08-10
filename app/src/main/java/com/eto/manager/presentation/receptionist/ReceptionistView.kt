@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +32,10 @@ import com.eto.manager.presentation.components.SpotlightCard
 import com.eto.manager.presentation.components.bounceClick
 import com.eto.manager.presentation.components.magnetEffect
 import com.eto.manager.presentation.components.glassmorphicCard
+import com.eto.manager.presentation.components.PatientDetailsView
+import com.eto.manager.presentation.components.etoBackground
+import com.eto.manager.presentation.components.GlassButton
+import com.eto.manager.presentation.UserRole
 import com.eto.manager.presentation.theme.*
 
 @Composable
@@ -46,165 +51,272 @@ fun ReceptionistView(
 
     val isDark = MaterialTheme.colorScheme.background == DarkBgStart
 
+    var selectedTokenForDetails by remember { mutableStateOf<Token?>(null) }
+    var selectedBillForDetails by remember { mutableStateOf<Token?>(null) }
+    var billFilter by remember { mutableStateOf("All") }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
     ) {
-        when (activeTab) {
-            0 -> { // QUEUE TAB: Flat list of all active queue patients matching screenshot
-                val activeQueue = tokens.filter { it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING }
-                    .sortedBy { it.id }
+        if (selectedTokenForDetails != null) {
+            PatientDetailsView(
+                token = selectedTokenForDetails!!,
+                role = UserRole.RECEPTIONIST,
+                viewModel = viewModel,
+                onBack = { selectedTokenForDetails = null }
+            )
+        } else if (selectedBillForDetails != null) {
+            BillDetailsOverlay(
+                token = selectedBillForDetails!!,
+                viewModel = viewModel,
+                isDark = isDark,
+                onBack = { selectedBillForDetails = null }
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                when (activeTab) {
+                    0 -> { // QUEUE TAB: Flat list of all active queue patients matching screenshot
+                        val activeQueue = tokens.filter { it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING }
+                            .sortedBy { it.id }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Current Queue",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        )
-                    }
-
-                    if (activeQueue.isEmpty()) {
-                        item {
-                            EmptyState(message = "No patients in queue currently.")
-                        }
-                    } else {
-                        items(activeQueue) { token ->
-                            var showActionsDialog by remember { mutableStateOf(false) }
-
-                            ReceptionistQueuePatientCard(
-                                token = token,
-                                isDark = isDark,
-                                onClick = { showActionsDialog = true }
-                            )
-
-                            if (showActionsDialog) {
-                                QueueActionDialog(
-                                    token = token,
-                                    onDismiss = { showActionsDialog = false },
-                                    onCallNext = {
-                                        viewModel.callNextPatient(token.doctorId)
-                                        showActionsDialog = false
-                                    },
-                                    onSkip = {
-                                        viewModel.skipPatient(token)
-                                        showActionsDialog = false
-                                    }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Current Queue",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
                                 )
+                            }
+
+                            if (activeQueue.isEmpty()) {
+                                item {
+                                    EmptyState(message = "No patients in queue currently.")
+                                }
+                            } else {
+                                items(activeQueue) { token ->
+                                    ReceptionistQueuePatientCard(
+                                        token = token,
+                                        isDark = isDark,
+                                        onClick = { selectedTokenForDetails = token }
+                                    )
+                                }
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(90.dp))
                             }
                         }
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(90.dp))
+                    1 -> { // REQUESTS TAB: Online Requests
+                        val requests = tokens.filter { it.status == TokenStatus.PENDING }
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Online Token Requests",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                )
+                            }
+
+                            if (requests.isEmpty()) {
+                                item {
+                                    EmptyState(message = "No pending online requests.")
+                                }
+                            } else {
+                                items(requests) { req ->
+                                    MinimalPatientCard(
+                                        token = req,
+                                        isDark = isDark,
+                                        onClick = { selectedTokenForDetails = req }
+                                    )
+                                }
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(90.dp))
+                            }
+                        }
+                    }
+
+                    2 -> { // BILLS TAB: Refined statistics and filters
+                        val completedTokens = tokens.filter { it.status == TokenStatus.COMPLETED }
+                        val todayRevenue = completedTokens.sumOf { it.billAmount }
+                        val pendingCount = completedTokens.count { it.paymentStatus == PaymentStatus.PENDING }
+
+                        val filteredBills = when (billFilter) {
+                            "Paid" -> completedTokens.filter { it.paymentStatus == PaymentStatus.PAID }
+                            "Pending" -> completedTokens.filter { it.paymentStatus == PaymentStatus.PENDING }
+                            "Cancelled" -> tokens.filter { it.status == TokenStatus.SKIPPED }
+                            else -> completedTokens + tokens.filter { it.status == TokenStatus.SKIPPED }
+                        }
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Billing & Invoices",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                )
+                            }
+
+                            // 1. Stats Row
+                            item {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .glassmorphicCard(isDark, cornerRadius = 20.dp)
+                                            .padding(14.dp)
+                                    ) {
+                                        Column {
+                                            Text(
+                                                "Today's Revenue",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                "₹${todayRevenue.toInt()}",
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF10B981)
+                                            )
+                                        }
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .glassmorphicCard(isDark, cornerRadius = 20.dp)
+                                            .padding(14.dp)
+                                    ) {
+                                        Column {
+                                            Text(
+                                                "Pending Bills",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                "$pendingCount",
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFFF59E0B)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 2. Filter Chips
+                            item {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    listOf("All", "Paid", "Pending", "Cancelled").forEach { filter ->
+                                        val isSelected = billFilter == filter
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                                )
+                                                .border(
+                                                    1.dp,
+                                                    if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                    RoundedCornerShape(12.dp)
+                                                )
+                                                .clickable { billFilter = filter }
+                                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = filter,
+                                                fontSize = 12.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 3. Bills List
+                            if (filteredBills.isEmpty()) {
+                                item {
+                                    EmptyState(message = "No invoices found for this filter.")
+                                }
+                            } else {
+                                items(filteredBills) { bill ->
+                                    MinimalBillCard(
+                                        token = bill,
+                                        isDark = isDark,
+                                        onClick = { selectedBillForDetails = bill }
+                                    )
+                                }
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(90.dp))
+                            }
+                        }
                     }
                 }
-            }
 
-            1 -> { // REQUESTS TAB: Online Requests
-                val requests = tokens.filter { it.status == TokenStatus.PENDING }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Online Token Requests",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
+                // Walk-in Registration form Dialog triggered by FAB
+                if (showWalkInDialog) {
+                    AlertDialog(
+                        onDismissRequest = onDismissWalkIn,
+                        title = null,
+                        text = {
+                            WalkInForm(
+                                doctors = doctors,
+                                onRegister = { name, phone, docId, symptoms ->
+                                    viewModel.registerWalkIn(name, phone, docId, symptoms)
+                                    onDismissWalkIn()
+                                }
                             )
-                        )
-                    }
-
-                    if (requests.isEmpty()) {
-                        item {
-                            EmptyState(message = "No pending online requests.")
-                        }
-                    } else {
-                        items(requests) { req ->
-                            RequestCard(
-                                token = req,
-                                onApprove = { viewModel.approveToken(req) },
-                                onReject = { viewModel.rejectToken(req) }
-                            )
-                        }
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(90.dp))
-                    }
-                }
-            }
-
-            2 -> { // BILLS TAB: Pending consultation invoices
-                val pendingBills = tokens.filter { it.status == TokenStatus.COMPLETED && it.paymentStatus == PaymentStatus.PENDING }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Pending Invoices",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        )
-                    }
-
-                    if (pendingBills.isEmpty()) {
-                        item {
-                            EmptyState(message = "No pending consultation invoices.")
-                        }
-                    } else {
-                        items(pendingBills) { bill ->
-                            BillInvoiceCard(
-                                token = bill,
-                                onCollectPayment = { viewModel.recordPayment(bill) }
-                            )
-                        }
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(90.dp))
-                    }
-                }
-            }
-        }
-
-        // Walk-in Registration form Dialog triggered by FAB
-        if (showWalkInDialog) {
-            AlertDialog(
-                onDismissRequest = onDismissWalkIn,
-                title = null,
-                text = {
-                    WalkInForm(
-                        doctors = doctors,
-                        onRegister = { name, phone, docId, symptoms ->
-                            viewModel.registerWalkIn(name, phone, docId, symptoms)
-                            onDismissWalkIn()
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = onDismissWalkIn) {
+                                Text("Cancel", fontWeight = FontWeight.Bold)
+                            }
                         }
                     )
-                },
-                confirmButton = {},
-                dismissButton = {
-                    TextButton(onClick = onDismissWalkIn) {
-                        Text("Cancel", fontWeight = FontWeight.Bold)
-                    }
                 }
-            )
+            }
         }
     }
 }
@@ -556,62 +668,371 @@ fun WalkInForm(doctors: List<Doctor>, onRegister: (String, String, String, Strin
 }
 
 @Composable
-fun BillInvoiceCard(token: Token, onCollectPayment: () -> Unit) {
-    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
+fun MinimalPatientCard(
+    token: Token,
+    isDark: Boolean,
+    onClick: () -> Unit
+) {
+    val avatarBg = Color(0xFFEFF6FF)
+    val avatarText = Color(0xFF2563EB)
 
-    SpotlightCard(modifier = Modifier.fillMaxWidth()) {
+    val initials = remember(token.patientName) {
+        val parts = token.patientName.trim().split(" ")
+        if (parts.size >= 2) {
+            "${parts[0].firstOrNull() ?: 'P'}${parts[1].firstOrNull() ?: 'T'}"
+        } else {
+            token.patientName.take(2).uppercase()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isDark) Color(0xFF1E293B).copy(alpha = 0.6f) else Color.White)
+            .border(
+                1.dp,
+                if (isDark) Color(0xFF334155).copy(alpha = 0.4f) else Color(0xFFEFF6FF),
+                RoundedCornerShape(20.dp)
+            )
+            .clickable { onClick() }
+            .padding(16.dp)
+    ) {
         Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(token.patientName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
-                Text("Token: ${token.tokenNumber} • Doctor: ${token.doctorName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(avatarBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initials,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = avatarText
+                )
             }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = token.patientName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Assign Doctor: ${token.doctorName}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isDark) DarkErrorBg else LightErrorBg)
+                    .background(Color(0xFFFEF3C7))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Text("UNPAID", fontSize = 10.sp, color = if (isDark) DarkErrorText else LightErrorText, fontWeight = FontWeight.Bold)
+                Text(
+                    "Request",
+                    fontSize = 10.sp,
+                    color = Color(0xFFD97706),
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "Diagnosis: ${token.diagnosis}",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = "Prescription: ${token.prescription}",
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun MinimalBillCard(
+    token: Token,
+    isDark: Boolean,
+    onClick: () -> Unit
+) {
+    val isPaid = token.paymentStatus == PaymentStatus.PAID
+    val isCancelled = token.status == TokenStatus.SKIPPED
+    val initials = remember(token.patientName) {
+        val parts = token.patientName.trim().split(" ")
+        if (parts.size >= 2) {
+            "${parts[0].firstOrNull() ?: 'P'}${parts[1].firstOrNull() ?: 'T'}"
+        } else {
+            token.patientName.take(2).uppercase()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isDark) Color(0xFF1E293B).copy(alpha = 0.6f) else Color.White)
+            .border(
+                1.dp,
+                if (isDark) Color(0xFF334155).copy(alpha = 0.4f) else Color(0xFFEFF6FF),
+                RoundedCornerShape(20.dp)
+            )
+            .clickable { onClick() }
+            .padding(16.dp)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Total Fee: ₹${token.billAmount}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Button(
-                onClick = onCollectPayment,
+            Box(
                 modifier = Modifier
-                    .bounceClick()
-                    .magnetEffect(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isDark) DarkSuccessBg else LightSuccessBg,
-                    contentColor = if (isDark) DarkSuccessText else LightSuccessText
-                ),
-                shape = RoundedCornerShape(12.dp)
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFEFF6FF)),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Paid Cash", fontWeight = FontWeight.Bold)
+                Text(
+                    text = initials,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2563EB)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = token.patientName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "INV-ETO-${token.id} • ${token.doctorName}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "₹${token.billAmount.toInt()}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (isCancelled) Color(0xFFF3F4F6)
+                            else if (isPaid) Color(0xFFEBFDF5)
+                            else Color(0xFFFEF2F2)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (isCancelled) "CANCELLED" else if (isPaid) "PAID" else "PENDING",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isCancelled) Color(0xFF6B7280) else if (isPaid) Color(0xFF10B981) else Color(0xFFEF4444)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BillDetailsOverlay(
+    token: Token,
+    viewModel: EtoViewModel,
+    isDark: Boolean,
+    onBack: () -> Unit
+) {
+    var selectedPaymentMethod by remember { mutableStateOf("Cash") }
+    val baseAmount = token.billAmount
+    val facilityCharge = 100.0
+    val gst = (baseAmount + facilityCharge) * 0.18
+    val totalAmount = baseAmount + facilityCharge + gst
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .etoBackground(isDark)
+            .clickable(enabled = false) {}
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(if (isDark) Color(0x33FFFFFF) else Color.White)
+                ) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
+                }
+                Text("Invoice Details", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (token.status == TokenStatus.SKIPPED) Color(0xFFF3F4F6)
+                            else if (token.paymentStatus == PaymentStatus.PAID) Color(0xFFEBFDF5)
+                            else Color(0xFFFEF2F2)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (token.status == TokenStatus.SKIPPED) "CANCELLED" else if (token.paymentStatus == PaymentStatus.PAID) "PAID" else "PENDING",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (token.status == TokenStatus.SKIPPED) Color(0xFF6B7280) else if (token.paymentStatus == PaymentStatus.PAID) Color(0xFF10B981) else Color(0xFFEF4444)
+                    )
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Invoice Details Card
+                item {
+                    SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
+                        Column(modifier = Modifier.padding(4.dp)) {
+                            Text("Invoice INV-ETO-${token.id}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Patient Name:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(token.patientName, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Patient Phone:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(token.patientPhone, fontSize = 12.sp)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Doctor Consulted:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(token.doctorName, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Billing Items Card
+                item {
+                    SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
+                        Column(modifier = Modifier.padding(4.dp)) {
+                            Text("Charges Breakdown", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Consultation Fee", fontSize = 13.sp)
+                                Text("₹${baseAmount.toInt()}.00", fontSize = 13.sp)
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Facility Charges", fontSize = 13.sp)
+                                Text("₹${facilityCharge.toInt()}.00", fontSize = 13.sp)
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("GST (18%)", fontSize = 13.sp)
+                                Text("₹${gst.toInt()}.00", fontSize = 13.sp)
+                            }
+                            Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Total Amount", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text("₹${totalAmount.toInt()}.00", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+
+                // Payment Method Selector
+                if (token.paymentStatus == PaymentStatus.PENDING && token.status != TokenStatus.SKIPPED) {
+                    item {
+                        SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
+                            Column(modifier = Modifier.padding(4.dp)) {
+                                Text("Select Payment Method", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    listOf("Cash", "UPI", "Card").forEach { method ->
+                                        val isSelected = selectedPaymentMethod == method
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                                )
+                                                .border(
+                                                    1.dp,
+                                                    if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                    RoundedCornerShape(12.dp)
+                                                )
+                                                .clickable { selectedPaymentMethod = method }
+                                                .padding(vertical = 10.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(method, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bottom Actions
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+            ) {
+                if (token.paymentStatus == PaymentStatus.PENDING && token.status != TokenStatus.SKIPPED) {
+                    com.eto.manager.presentation.components.GlassButton(
+                        onClick = {
+                            viewModel.recordPayment(token)
+                            onBack()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Collect Payment ($selectedPaymentMethod)", fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    com.eto.manager.presentation.components.GlassButton(
+                        onClick = { /* Print/Download PDF */ },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Download Invoice PDF", fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }

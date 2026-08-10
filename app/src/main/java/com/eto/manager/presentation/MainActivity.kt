@@ -78,6 +78,7 @@ import com.eto.manager.presentation.components.SpotlightCard
 import com.eto.manager.presentation.components.bounceClick
 import com.eto.manager.presentation.components.glassmorphicCard
 import com.eto.manager.presentation.components.magnetEffect
+import com.eto.manager.presentation.components.UserProfileView
 import com.eto.manager.presentation.doctor.DoctorView
 import com.eto.manager.presentation.patient.PatientView
 import com.eto.manager.presentation.receptionist.ReceptionistView
@@ -205,17 +206,9 @@ fun EtoAppShell(
 
                 // Profile Modal Dialog
                 if (showProfileModal) {
-                    val patientName by viewModel.patientName.collectAsState()
-                    val patientPhone by viewModel.patientPhone.collectAsState()
-
-                    ProfileModalDialog(
+                    UserProfileView(
                         currentRole = currentRole,
-                        patientName = patientName,
-                        patientPhone = patientPhone,
-                        onPatientInfoSave = { name, phone ->
-                            viewModel.patientName.value = name
-                            viewModel.patientPhone.value = phone
-                        },
+                        viewModel = viewModel,
                         onDismiss = { showProfileModal = false }
                     )
                 }
@@ -394,127 +387,7 @@ fun CommonTopHeader(
     }
 }
 
-@Composable
-fun ProfileModalDialog(
-    currentRole: UserRole,
-    patientName: String,
-    patientPhone: String,
-    onPatientInfoSave: (String, String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var tempName by remember { mutableStateOf(patientName) }
-    var tempPhone by remember { mutableStateOf(patientPhone) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "User Profile",
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Large Avatar Icon
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFEFF6FF)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Person,
-                        contentDescription = null,
-                        tint = Color(0xFF2563EB),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-
-                when (currentRole) {
-                    UserRole.PATIENT -> {
-                        Text(
-                            text = "Patient Profile Details",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        OutlinedTextField(
-                            value = tempName,
-                            onValueChange = { tempName = it },
-                            label = { Text("Name") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = tempPhone,
-                            onValueChange = { tempPhone = it },
-                            label = { Text("Phone Number") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = {
-                                onPatientInfoSave(tempName, tempPhone)
-                                onDismiss()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Save Info", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    UserRole.RECEPTIONIST -> {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Desk Assignment: Reception Desk #1", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("Shift Assignment: Morning (08:00 AM - 04:00 PM)", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Console Access: Patient Check-In & Invoicing", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    UserRole.DOCTOR -> {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Role: Consulting Doctor", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("Clinic: ETO General Clinic Center", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Access Privileges: Consultations, Prescriptions & Diagnostics", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    UserRole.ADMIN -> {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Role: Hospital Administrator", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("Privileges: Full Database Reset & Simulation Controls", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close", fontWeight = FontWeight.Bold)
-            }
-        }
-    )
-}
 
 @Composable
 fun BottomFloatingNavBar(
@@ -531,8 +404,7 @@ fun BottomFloatingNavBar(
         )
         UserRole.DOCTOR -> listOf(
             Triple("Patients", Icons.Outlined.People, 0),
-            Triple("Patient Review", Icons.Outlined.Assignment, 1),
-            Triple("Profile", Icons.Outlined.Person, 2)
+            Triple("Patient Review", Icons.Outlined.Assignment, 1)
         )
         UserRole.RECEPTIONIST -> listOf(
             Triple("Queue", Icons.Outlined.People, 0),

@@ -32,6 +32,7 @@ import com.eto.manager.presentation.components.EmptyState
 import com.eto.manager.presentation.components.SpotlightCard
 import com.eto.manager.presentation.components.bounceClick
 import com.eto.manager.presentation.components.glassmorphicCard
+import com.eto.manager.presentation.components.PatientDetailsView
 import com.eto.manager.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -286,11 +287,15 @@ fun DoctorView(
                             }
                         } else {
                             items(completedTokens) { tk ->
-                                SpotlightCard(modifier = Modifier.fillMaxWidth()) {
+                                 SpotlightCard(
+                                     modifier = Modifier.fillMaxWidth(),
+                                     cornerRadius = 24.dp,
+                                     onClick = { activeConsultToken = tk }
+                                 ) {
                                     Row(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth().padding(8.dp)
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(tk.patientName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
@@ -315,275 +320,17 @@ fun DoctorView(
                         item { Spacer(modifier = Modifier.height(90.dp)) }
                     }
                 }
-
-                2 -> { // PROFILE TAB
-                    Text(
-                        text = "Professional Profile",
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        if (currentDoctor != null) {
-                            item {
-                                SpotlightCard(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    cornerRadius = 28.dp
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(60.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.primaryContainer),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = getInitials(currentDoctor.name),
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 20.sp,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(16.dp))
-                                        Column {
-                                            Text(
-                                                currentDoctor.name,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 20.sp,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Text(
-                                                "${currentDoctor.specialty} • ${currentDoctor.departmentName}",
-                                                fontSize = 13.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.height(24.dp))
-
-                                    Row(
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Avg Service", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text("${currentDoctor.averageServiceTimeMinutes} mins", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                        }
-
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Rating", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text("${currentDoctor.rating}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                            }
-                                        }
-
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Status", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = if (currentDoctor.isAvailable) "Available" else "Off Duty",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (currentDoctor.isAvailable) SuccessGreen else ErrorRed
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            item {
-                                SpotlightCard(modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        "Manage Availability",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        "Toggle your status to control if patients can request live tokens for your consultation today.",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(16.dp))
-
-                                    Button(
-                                        onClick = {
-                                            viewModel.toggleDoctorAvailability(currentDoctor.id, !currentDoctor.isAvailable)
-                                        },
-                                        modifier = Modifier.fillMaxWidth().bounceClick(),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (currentDoctor.isAvailable) ErrorRed else SuccessGreen
-                                        ),
-                                        shape = RoundedCornerShape(16.dp)
-                                    ) {
-                                        Text(
-                                            if (currentDoctor.isAvailable) "Go Offline / Off Duty" else "Go Online / Available",
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        item { Spacer(modifier = Modifier.height(90.dp)) }
-                    }
-                }
             }
         }
 
-        // Consultation workspace dialog sheet overlay
+        // Consultation workspace details overlay
         if (activeConsultToken != null) {
-            val token = activeConsultToken!!
-            var diagnosis by remember { mutableStateOf("") }
-            var prescription by remember { mutableStateOf("") }
-            var billFee by remember { mutableStateOf("500") }
-
-            AlertDialog(
-                onDismissRequest = { activeConsultToken = null },
-                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surface),
-                content = {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        token.patientName,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        "Token: #${token.tokenNumber} • Chief Complaint",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.primaryContainer)
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        "CONSULTATION",
-                                        fontSize = 9.sp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "\"${token.symptoms}\"",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            OutlinedTextField(
-                                value = diagnosis,
-                                onValueChange = { diagnosis = it },
-                                label = { Text("Diagnosis Notes") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            OutlinedTextField(
-                                value = prescription,
-                                onValueChange = { prescription = it },
-                                label = { Text("Prescribed Medication / Treatment") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            OutlinedTextField(
-                                value = billFee,
-                                onValueChange = { billFee = it },
-                                label = { Text("Consultation Fee (INR)") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = { activeConsultToken = null },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Text("Cancel")
-                                }
-
-                                Button(
-                                    onClick = {
-                                        val feeValue = billFee.toDoubleOrNull() ?: 500.0
-                                        if (diagnosis.isNotEmpty() && prescription.isNotEmpty()) {
-                                            viewModel.completeConsultation(token, diagnosis, prescription, feeValue)
-                                            activeConsultToken = null
-                                        }
-                                    },
-                                    enabled = diagnosis.isNotBlank() && prescription.isNotBlank() && billFee.toDoubleOrNull() != null,
-                                    modifier = Modifier.weight(2.5f).bounceClick(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Icon(Icons.Default.AssignmentTurnedIn, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Finalize Consult", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                }
-                            }
-                        }
-                    }
-                }
+            PatientDetailsView(
+                token = activeConsultToken!!,
+                role = UserRole.DOCTOR,
+                viewModel = viewModel,
+                onBack = { activeConsultToken = null },
+                modifier = Modifier.fillMaxSize()
             )
         }
     }

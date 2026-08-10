@@ -103,6 +103,11 @@ import com.eto.manager.presentation.components.bounceClick
 import com.eto.manager.presentation.components.magnetEffect
 import com.eto.manager.presentation.components.shimmer
 import com.eto.manager.presentation.theme.*
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.FileDownload
+import com.eto.manager.presentation.components.etoBackground
 
 @Composable
 fun PatientView(
@@ -127,6 +132,7 @@ fun PatientView(
     var selectedHospital by remember { mutableStateOf<MockHospitalInfo?>(null) }
     var selectedDoctor by remember { mutableStateOf<Doctor?>(null) }
     var symptomsText by remember { mutableStateOf("") }
+    var activeQuickAction by remember { mutableStateOf<String?>(null) }
 
     val mockHospitalsList = remember {
         listOf(
@@ -200,7 +206,16 @@ fun PatientView(
             .fillMaxSize()
             .padding(horizontal = 16.dp)
     ) {
-        when (activeTab) {
+        if (activeQuickAction != null) {
+            PatientQuickActionOverlay(
+                action = activeQuickAction!!,
+                patientTokens = patientTokens,
+                viewModel = viewModel,
+                isDark = isDark,
+                onBack = { activeQuickAction = null }
+            )
+        } else {
+            when (activeTab) {
             0 -> { // HOME TAB
                 if (isBookingFlowActive) {
                     Column(
@@ -606,16 +621,17 @@ fun PatientView(
 
                         item {
                             // Book an Appointment Card
-                            SpotlightCard(
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    selectedHospital = null
-                                    selectedDoctor = null
-                                    symptomsText = ""
-                                    searchQuery = ""
-                                    isBookingFlowActive = true
-                                },
-                                cornerRadius = 24.dp
-                            ) {
+                             SpotlightCard(
+                                 modifier = Modifier.fillMaxWidth(),
+                                 cornerRadius = 24.dp,
+                                 onClick = {
+                                     selectedHospital = null
+                                     selectedDoctor = null
+                                     symptomsText = ""
+                                     searchQuery = ""
+                                     isBookingFlowActive = true
+                                 }
+                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -912,10 +928,10 @@ fun PatientView(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                QuickActionCard("My Health\nRecords", Icons.Outlined.MedicalServices, modifier = Modifier.weight(1f))
-                                QuickActionCard("Prescriptions", Icons.Outlined.ReceiptLong, modifier = Modifier.weight(1f))
-                                QuickActionCard("Lab Reports", Icons.Outlined.SupportAgent, modifier = Modifier.weight(1f))
-                                QuickActionCard("Bills", Icons.Outlined.AdminPanelSettings, modifier = Modifier.weight(1f))
+                                QuickActionCard("My Health\nRecords", Icons.Outlined.MedicalServices, onClick = { activeQuickAction = "Health Records" }, modifier = Modifier.weight(1f))
+                                QuickActionCard("Prescriptions", Icons.Outlined.ReceiptLong, onClick = { activeQuickAction = "Prescriptions" }, modifier = Modifier.weight(1f))
+                                QuickActionCard("Lab Reports", Icons.Outlined.SupportAgent, onClick = { activeQuickAction = "Lab Reports" }, modifier = Modifier.weight(1f))
+                                QuickActionCard("Bills", Icons.Outlined.AdminPanelSettings, onClick = { activeQuickAction = "Bills" }, modifier = Modifier.weight(1f))
                             }
                         }
 
@@ -980,6 +996,7 @@ fun PatientView(
             }
         }
     }
+}
 }
 
 @Composable
@@ -1548,12 +1565,14 @@ fun ActiveAppointmentStat(label: String, value: String, isPrimary: Boolean = fal
 fun QuickActionCard(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    SpotlightCard(
-        modifier = modifier.height(100.dp),
-        cornerRadius = 20.dp
-    ) {
+     SpotlightCard(
+         modifier = modifier.height(100.dp),
+         cornerRadius = 20.dp,
+         onClick = onClick
+     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -1582,6 +1601,258 @@ fun QuickActionCard(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 lineHeight = 13.sp
             )
+        }
+    }
+}
+
+@Composable
+fun PatientQuickActionOverlay(
+    action: String,
+    patientTokens: List<Token>,
+    viewModel: EtoViewModel,
+    isDark: Boolean,
+    onBack: () -> Unit
+) {
+    val completedTokens = patientTokens.filter { it.status == TokenStatus.COMPLETED }
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .etoBackground(isDark)
+            .clickable(enabled = false) {} // block click propagation
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp)
+        ) {
+            // Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(if (isDark) Color(0x33FFFFFF) else Color.White)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = action,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                when (action) {
+                    "Health Records" -> {
+                        if (completedTokens.isEmpty()) {
+                            item {
+                                EmptyState(message = "No completed health records found.")
+                            }
+                        } else {
+                            items(completedTokens) { token ->
+                                SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
+                                    Column(modifier = Modifier.padding(4.dp)) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(token.doctorName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                            Text("12 May 2024", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        Text(token.departmentName, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Symptoms: ${token.symptoms}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        if (token.diagnosis != null) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text("Diagnosis: ${token.diagnosis}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            ) {
+                                                Text("Vitals: Normal", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    "Prescriptions" -> {
+                        val withRx = completedTokens.filter { !it.prescription.isNullOrBlank() }
+                        if (withRx.isEmpty()) {
+                            item {
+                                EmptyState(message = "No prescriptions found.")
+                            }
+                        } else {
+                            items(withRx) { token ->
+                                SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(token.doctorName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                            Text(token.departmentName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = "Rx: ${token.prescription}",
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        IconButton(onClick = {}) {
+                                            Icon(Icons.Default.FileDownload, contentDescription = "Download Rx", tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    "Lab Reports" -> {
+                        val reports = listOf(
+                            Triple("Complete Blood Count (CBC)", "14 May 2024", "Normal"),
+                            Triple("Lipid Profile Test", "14 May 2024", "Borderline"),
+                            Triple("Electrocardiogram (ECG)", "12 May 2024", "Normal"),
+                            Triple("Chest X-Ray PA View", "10 May 2024", "Normal")
+                        )
+                        items(reports) { (name, date, status) ->
+                            SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Outlined.SupportAgent, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Text("Date: $date", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(if (status == "Normal") Color(0xFFEBFDF5) else Color(0xFFFFF7ED))
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = status,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (status == "Normal") Color(0xFF10B981) else Color(0xFFF97316)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        IconButton(onClick = {}) {
+                                            Icon(Icons.Default.FileDownload, contentDescription = "Download Report", tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    "Bills" -> {
+                        if (completedTokens.isEmpty()) {
+                            item {
+                                EmptyState(message = "No invoices or bills found.")
+                            }
+                        } else {
+                            items(completedTokens) { token ->
+                                val isPaid = token.paymentStatus == com.eto.manager.domain.model.PaymentStatus.PAID
+                                SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column {
+                                                Text("Invoice INV-ETO-${token.id}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                Text(token.doctorName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(if (isPaid) Color(0xFFEBFDF5) else Color(0xFFFEF2F2))
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (isPaid) "PAID" else "PENDING",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isPaid) Color(0xFF10B981) else Color(0xFFEF4444)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        Row(
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Total Amount: ₹${token.billAmount.toInt()}",
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            if (!isPaid) {
+                                                com.eto.manager.presentation.components.GlassButton(
+                                                    onClick = { viewModel.recordPayment(token) },
+                                                    modifier = Modifier.height(36.dp)
+                                                ) {
+                                                    Text("Pay Now", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            } else {
+                                                IconButton(onClick = {}) {
+                                                    Icon(Icons.Default.FileDownload, contentDescription = "Receipt", tint = MaterialTheme.colorScheme.primary)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

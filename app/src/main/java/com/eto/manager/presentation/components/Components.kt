@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -64,12 +65,51 @@ import kotlinx.coroutines.launch
 // --- Glassmorphic Modifiers ---
 
 /**
+ * ETO background radial gradient style
+ */
+fun Modifier.etoBackground(isDark: Boolean): Modifier = composed {
+    if (isDark) {
+        this.background(
+            Brush.verticalGradient(
+                colors = listOf(DarkBgStart, DarkBgEnd)
+            )
+        )
+    } else {
+        this.background(
+            color = Color(0xFFE7F1FB)
+        ).drawWithContent {
+            drawContent()
+            // Radial gradient 1 (circle at 20% 10%, rgba(158, 201, 243, 0.35), transparent 40%)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF9EC9F3).copy(alpha = 0.35f), Color.Transparent),
+                    center = Offset(size.width * 0.2f, size.height * 0.1f),
+                    radius = size.width * 0.45f
+                ),
+                radius = size.width * 0.45f,
+                center = Offset(size.width * 0.2f, size.height * 0.1f)
+            )
+            // Radial gradient 2 (circle at 80% 80%, rgba(47, 120, 200, 0.12), transparent 45%)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF2F78C8).copy(alpha = 0.12f), Color.Transparent),
+                    center = Offset(size.width * 0.8f, size.height * 0.8f),
+                    radius = size.width * 0.5f
+                ),
+                radius = size.width * 0.5f,
+                center = Offset(size.width * 0.8f, size.height * 0.8f)
+            )
+        }
+    }
+}
+
+/**
  * Glassmorphic Card Background & Border & Shadow
  */
 fun Modifier.glassmorphicCard(isDark: Boolean, cornerRadius: Dp = 28.dp): Modifier = composed {
-    val cardBg = if (isDark) DarkCardBg else LightCardBg
-    val borderColor = if (isDark) DarkCardBorder else LightCardBorder
-    val shadowColor = if (isDark) Color(0x33000000) else Color(0x0F0F172A)
+    val cardBg = if (isDark) DarkCardBg else Color(0x8CFFFFFF) // rgba(255, 255, 255, 0.55)
+    val borderColor = if (isDark) DarkCardBorder else Color(0xC0FFFFFF) // rgba(255, 255, 255, 0.75)
+    val shadowColor = if (isDark) Color(0x33000000) else Color(0x14173A5E) // rgba(23, 58, 94, 0.08)
     
     this
         .shadow(
@@ -88,6 +128,100 @@ fun Modifier.glassmorphicCard(isDark: Boolean, cornerRadius: Dp = 28.dp): Modifi
             color = borderColor,
             shape = RoundedCornerShape(cornerRadius)
         )
+}
+
+/**
+ * Glassmorphic Button modifier
+ */
+fun Modifier.glassmorphicButton(isDark: Boolean, cornerRadius: Dp = 20.dp): Modifier = composed {
+    val buttonBg = if (isDark) Color(0x661E293B) else Color(0x94FFFFFF) // rgba(255, 255, 255, 0.58)
+    val borderColor = if (isDark) Color(0x1FFFFFFF) else Color(0xC0FFFFFF) // rgba(255, 255, 255, 0.75)
+    val shadowColor = if (isDark) Color(0x26000000) else Color(0x14173A5E) // rgba(23, 58, 94, 0.08)
+
+    this
+        .shadow(
+            elevation = 6.dp,
+            shape = RoundedCornerShape(cornerRadius),
+            clip = false,
+            ambientColor = shadowColor,
+            spotColor = shadowColor
+        )
+        .background(
+            color = buttonBg,
+            shape = RoundedCornerShape(cornerRadius)
+        )
+        .border(
+            width = 1.dp,
+            color = borderColor,
+            shape = RoundedCornerShape(cornerRadius)
+        )
+}
+
+/**
+ * Glassmorphic Navigation bar modifier
+ */
+fun Modifier.glassmorphicNav(isDark: Boolean): Modifier = composed {
+    val navBg = if (isDark) Color(0x990A0F24) else Color(0x9EFFFFFF) // rgba(255, 255, 255, 0.62)
+    val borderColor = if (isDark) Color(0x2BFFFFFF) else Color(0xCCFFFFFF) // rgba(255, 255, 255, 0.8)
+    val shadowColor = if (isDark) Color(0x40000000) else Color(0x1A173A5E) // rgba(23, 58, 94, 0.10)
+
+    this
+        .shadow(
+            elevation = 10.dp,
+            shape = RoundedCornerShape(32.dp),
+            clip = false,
+            ambientColor = shadowColor,
+            spotColor = shadowColor
+        )
+        .background(
+            color = navBg,
+            shape = RoundedCornerShape(32.dp)
+        )
+        .border(
+            width = 1.dp,
+            color = borderColor,
+            shape = RoundedCornerShape(32.dp)
+        )
+}
+
+/**
+ * Active navigation item highlight
+ */
+fun Modifier.navItemActive(isDark: Boolean): Modifier = composed {
+    val itemBg = if (isDark) Color(0x263B82F6) else Color(0xD9E7F1FB) // rgba(231, 241, 251, 0.85)
+    this
+        .background(
+            color = itemBg,
+            shape = RoundedCornerShape(24.dp)
+        )
+}
+
+/**
+ * High-fidelity Glassmorphic Button
+ */
+@Composable
+fun GlassButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit
+) {
+    val isDark = MaterialTheme.colorScheme.background == DarkBgStart
+    Box(
+        modifier = modifier
+            .glassmorphicButton(isDark)
+            .clickable(enabled = enabled, onClick = onClick)
+            .bounceClick()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            content()
+        }
+    }
 }
 
 // --- ReactBits Ports: Modifiers ---
@@ -204,6 +338,7 @@ fun ShinyText(
 fun SpotlightCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 28.dp,
+    onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val isDark = MaterialTheme.colorScheme.background == DarkBgStart
@@ -218,20 +353,17 @@ fun SpotlightCard(
     Box(
         modifier = modifier
             .glassmorphicCard(isDark, cornerRadius)
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull()
-                        if (change != null) {
-                            touchPosition = if (change.pressed) {
-                                change.position
-                            } else {
-                                Offset.Unspecified
-                            }
-                        }
+            .pointerInput(onClick) {
+                detectTapGestures(
+                    onPress = { offset ->
+                        touchPosition = offset
+                        tryAwaitRelease()
+                        touchPosition = Offset.Unspecified
+                    },
+                    onTap = {
+                        onClick?.invoke()
                     }
-                }
+                )
             }
             .drawWithContent {
                 drawContent()
