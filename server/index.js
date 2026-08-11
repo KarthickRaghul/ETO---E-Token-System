@@ -189,6 +189,185 @@ app.get('/api/hospitals/:id/departments', async (req, res) => {
 });
 
 // ----------------------------------------------------
+// USER PROFILES
+// ----------------------------------------------------
+app.get('/api/profile/patient/:phone', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    let userRes = await db.query('SELECT u.*, p.id as patient_id, p.date_of_birth, p.gender, p.blood_group FROM users u LEFT JOIN patients p ON p.user_id = u.id WHERE u.phone = $1', [phone]);
+    
+    if (userRes.rows.length === 0) {
+      // Create user and patient profile on the fly
+      const newUserId = crypto.randomUUID();
+      const newPatientId = crypto.randomUUID();
+      await db.query(`
+        INSERT INTO users (id, email, phone, password_hash, role, first_name, last_name, is_active)
+        VALUES ($1, $2, $3, $4, 'PATIENT', 'Aarav', 'Sharma', TRUE)
+      `, [newUserId, 'aarav.sharma@email.com', phone, 'hashed_password']);
+      
+      await db.query(`
+        INSERT INTO patients (id, user_id, patient_number, date_of_birth, gender, blood_group)
+        VALUES ($1, $2, 'PT0001', '1996-05-12', 'MALE', 'B+')
+      `, [newPatientId, newUserId]);
+
+      userRes = await db.query('SELECT u.*, p.id as patient_id, p.date_of_birth, p.gender, p.blood_group FROM users u LEFT JOIN patients p ON p.user_id = u.id WHERE u.phone = $1', [phone]);
+    }
+
+    const row = userRes.rows[0];
+    const apptCountRes = await db.query('SELECT COUNT(*) FROM appointments WHERE patient_id = $1', [row.patient_id]);
+    const apptCount = parseInt(apptCountRes.rows[0].count, 10);
+
+    res.json({
+      id: row.patient_id || '',
+      first_name: row.first_name || 'Aarav',
+      last_name: row.last_name || 'Sharma',
+      email: row.email || 'aarav.sharma@email.com',
+      phone: row.phone,
+      date_of_birth: row.date_of_birth ? new Date(row.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '12 May 1996',
+      gender: row.gender ? (row.gender.charAt(0).toUpperCase() + row.gender.slice(1).toLowerCase()) : 'Male',
+      blood_group: row.blood_group || 'B+',
+      allergies: 'Penicillin',
+      conditions: 'None',
+      appointmentCount: apptCount > 0 ? apptCount : 18,
+      savedHospitalsCount: 5,
+      created_at: row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '12 Jan 2024'
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error fetching patient profile' });
+  }
+});
+
+app.get('/api/profile/doctor/:id', async (req, res) => {
+  try {
+    let { id } = req.params;
+    const DOC_UUID_MAP = {
+      'd1': 'd1111111-1111-1111-1111-111111111111',
+      'd2': 'd2222222-2222-2222-2222-222222222222',
+      'd3': 'd3333333-3333-3333-3333-333333333333'
+    };
+    if (DOC_UUID_MAP[id]) {
+      id = DOC_UUID_MAP[id];
+    }
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let queryStr = `
+      SELECT d.*, u.first_name, u.last_name, u.email, u.phone, dept.name AS department_name, h.name as hospital_name
+      FROM doctors d
+      JOIN users u ON d.user_id = u.id
+      LEFT JOIN departments dept ON d.department_id = dept.id
+      LEFT JOIN hospitals h ON d.hospital_id = h.id
+    `;
+    if (isUuid) {
+      queryStr += ` WHERE d.id = $1`;
+    } else {
+      queryStr += ` WHERE d.doctor_number = $1`;
+    }
+    const { rows } = await db.query(queryStr, [id]);
+
+    if (rows.length === 0) {
+      // Mock fallback if not found
+      return res.json({
+        id: id,
+        name: "Dr. Rahul Verma",
+        specialty: "Cardiologist",
+        department_id: "d1",
+        department_name: "Cardiology",
+        rating: 4.8,
+        averageServiceTimeMinutes: 15,
+        isAvailable: true,
+        working_days: "Mon - Sat",
+        consultation_hours: "09:00 AM - 05:00 PM",
+        appointment_duration: "15 mins per patient",
+        specialization: "Cardiologist",
+        qualification: "MBBS, MD (Cardiology)",
+        experience: "10+ Years",
+        consultation_fee: 800,
+        hospital_name: "City Care Hospital",
+        room_cabin: "Cardiology OPD - 204",
+        phone: "+91 98765 43210",
+        email: "rahul.verma@eto.com"
+      });
+    }
+
+    const doc = rows[0];
+    res.json({
+      id: doc.id,
+      name: `Dr. ${doc.first_name} ${doc.last_name}`,
+      specialty: doc.specialty || 'General Physician',
+      department_id: doc.department_id || '',
+      department_name: doc.department_name || 'General Medicine',
+      rating: 4.8,
+      averageServiceTimeMinutes: doc.average_service_time_minutes || 15,
+      isAvailable: doc.is_available,
+      working_days: "Mon - Sat",
+      consultation_hours: "09:00 AM - 05:00 PM",
+      appointment_duration: `${doc.average_service_time_minutes || 15} mins per patient`,
+      specialization: doc.specialty || 'General Physician',
+      qualification: doc.qualification || 'MBBS, MD',
+      experience: `${doc.experience_years || 10}+ Years`,
+      consultation_fee: parseFloat(doc.consultation_fee) || 800,
+      hospital_name: doc.hospital_name || 'City Care Hospital',
+      room_cabin: doc.room_cabin || 'OPD - 101',
+      phone: doc.phone || '+91 98765 43210',
+      email: doc.email || `${doc.first_name.toLowerCase()}@eto.com`
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error fetching doctor profile' });
+  }
+});
+
+app.get('/api/profile/receptionist/:phoneOrId', async (req, res) => {
+  try {
+    const { phoneOrId } = req.params;
+    const { rows } = await db.query(`
+      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+      FROM receptionists r
+      JOIN users u ON r.user_id = u.id
+      LEFT JOIN hospitals h ON r.hospital_id = h.id
+      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+    `, [phoneOrId]);
+
+    if (rows.length === 0) {
+      // Fallback receptionist
+      return res.json({
+        id: phoneOrId,
+        first_name: "Neha",
+        last_name: "Sharma",
+        email: "neha.sharma@eto.com",
+        phone: "9876541111",
+        employee_number: "RC0001",
+        designation: "Senior Receptionist",
+        shift: "Morning Shift",
+        hospital_name: "City Care Hospital",
+        department_name: "Front Desk",
+        working_days: "Mon - Sat",
+        working_hours: "08:00 AM - 04:00 PM"
+      });
+    }
+
+    const rec = rows[0];
+    res.json({
+      id: rec.id,
+      first_name: rec.first_name,
+      last_name: rec.last_name,
+      email: rec.email || 'neha.sharma@eto.com',
+      phone: rec.phone,
+      employee_number: rec.employee_number || 'RC0001',
+      designation: rec.designation || 'Senior Receptionist',
+      shift: rec.shift === 'MORNING' ? 'Morning Shift' : rec.shift === 'EVENING' ? 'Evening Shift' : rec.shift,
+      hospital_name: rec.hospital_name || 'City Care Hospital',
+      department_name: 'Front Desk',
+      working_days: "Mon - Sat",
+      working_hours: "08:00 AM - 04:00 PM"
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error fetching receptionist profile' });
+  }
+});
+
+// ----------------------------------------------------
 // DOCTORS & SCHEDULES
 // ----------------------------------------------------
 app.get('/api/doctors/:id', async (req, res) => {
@@ -668,8 +847,16 @@ app.get('/api/doctors', async (req, res) => {
 // 3. Update Doctor Availability
 app.patch('/api/doctors/:id/availability', async (req, res) => {
   try {
-    const { id } = req.params;
+    let { id } = req.params;
     const { isAvailable } = req.body;
+    const DOC_UUID_MAP = {
+      'd1': 'd1111111-1111-1111-1111-111111111111',
+      'd2': 'd2222222-2222-2222-2222-222222222222',
+      'd3': 'd3333333-3333-3333-3333-333333333333'
+    };
+    if (DOC_UUID_MAP[id]) {
+      id = DOC_UUID_MAP[id];
+    }
     await db.query('UPDATE doctors SET is_available = $1 WHERE id = $2', [isAvailable, id]);
     res.json({ success: true });
     broadcastQueueUpdate();

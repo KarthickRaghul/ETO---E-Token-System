@@ -246,4 +246,22 @@ class EtoRepositoryImpl(
         billAmount = billAmount,
         paymentStatus = if (paymentStatus == "PAID") PaymentStatus.PAID else PaymentStatus.PENDING
     )
+
+    override suspend fun getPatientProfile(phone: String): com.eto.manager.data.remote.PatientProfileResponse {
+        return withContext(Dispatchers.IO) {
+            apiService.getPatientProfile(phone)
+        }
+    }
+
+    override suspend fun getDoctorProfile(doctorId: String): com.eto.manager.data.remote.DoctorProfileResponse {
+        return withContext(Dispatchers.IO) {
+            apiService.getDoctorProfile(doctorId)
+        }
+    }
+
+    override suspend fun getReceptionistProfile(phoneOrId: String): com.eto.manager.data.remote.ReceptionistProfileResponse {
+        return withContext(Dispatchers.IO) {
+            apiService.getReceptionistProfile(phoneOrId)
+        }
+    }
 }

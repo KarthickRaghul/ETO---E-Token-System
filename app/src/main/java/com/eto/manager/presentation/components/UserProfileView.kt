@@ -43,6 +43,12 @@ fun UserProfileView(
     val selectedDoctorId by viewModel.selectedDoctorId.collectAsState()
     val currentDoctor = doctors.find { it.id == selectedDoctorId }
 
+    // Dynamic Database profiles
+    val patientProfile by viewModel.patientProfile.collectAsState()
+    val doctorProfile by viewModel.doctorProfile.collectAsState()
+    val receptionistProfile by viewModel.receptionistProfile.collectAsState()
+    val isProfileLoading by viewModel.isProfileLoading.collectAsState()
+
     // Patient editing states
     var isEditingPatient by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf(patientName) }
@@ -123,6 +129,15 @@ fun UserProfileView(
                 }
             }
 
+            if (isProfileLoading) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Spacer(modifier = Modifier.height(2.dp))
+            }
+
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -152,9 +167,18 @@ fun UserProfileView(
                                 contentAlignment = Alignment.Center
                             ) {
                                 val initials = when (currentRole) {
-                                    UserRole.PATIENT -> if (patientName.isNotEmpty()) patientName.first().toString() else "P"
-                                    UserRole.DOCTOR -> currentDoctor?.name?.split(" ")?.lastOrNull()?.first()?.toString() ?: "D"
-                                    UserRole.RECEPTIONIST -> "N"
+                                    UserRole.PATIENT -> {
+                                        val pName = patientProfile?.let { "${it.first_name} ${it.last_name}" } ?: patientName
+                                        if (pName.isNotEmpty()) pName.first().toString() else "P"
+                                    }
+                                    UserRole.DOCTOR -> {
+                                        val dName = doctorProfile?.name ?: currentDoctor?.name ?: "Dr. Rahul Verma"
+                                        dName.split(" ").lastOrNull()?.first()?.toString() ?: "D"
+                                    }
+                                    UserRole.RECEPTIONIST -> {
+                                        val rName = receptionistProfile?.let { "${it.first_name} ${it.last_name}" } ?: "Neha Sharma"
+                                        if (rName.isNotEmpty()) rName.first().toString() else "R"
+                                    }
                                     UserRole.ADMIN -> "A"
                                 }
                                 Text(
@@ -170,9 +194,9 @@ fun UserProfileView(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = when (currentRole) {
-                                        UserRole.PATIENT -> patientName
-                                        UserRole.DOCTOR -> currentDoctor?.name ?: "Dr. Rahul Verma"
-                                        UserRole.RECEPTIONIST -> "Neha Sharma"
+                                        UserRole.PATIENT -> patientProfile?.let { "${it.first_name} ${it.last_name}" } ?: patientName
+                                        UserRole.DOCTOR -> doctorProfile?.name ?: currentDoctor?.name ?: "Dr. Rahul Verma"
+                                        UserRole.RECEPTIONIST -> receptionistProfile?.let { "${it.first_name} ${it.last_name}" } ?: "Neha Sharma"
                                         UserRole.ADMIN -> "Super Admin"
                                     },
                                     fontWeight = FontWeight.Bold,
@@ -213,9 +237,9 @@ fun UserProfileView(
 
                                     Text(
                                         text = when (currentRole) {
-                                            UserRole.PATIENT -> "Patient ID: PT${String.format("%04d", (patientPhone.hashCode().coerceAtLeast(0) % 1000))}"
-                                            UserRole.DOCTOR -> "Doctor ID: DR0001"
-                                            UserRole.RECEPTIONIST -> "Employee ID: RC0001"
+                                            UserRole.PATIENT -> "Patient ID: ${patientProfile?.id?.take(8)?.uppercase() ?: "PT0001"}"
+                                            UserRole.DOCTOR -> "Doctor ID: ${doctorProfile?.id?.take(8)?.uppercase() ?: "DR0001"}"
+                                            UserRole.RECEPTIONIST -> "Employee ID: ${receptionistProfile?.employee_number ?: "RC0001"}"
                                             UserRole.ADMIN -> "Admin ID: AD0001"
                                         },
                                         fontSize = 12.sp,
@@ -295,10 +319,10 @@ fun UserProfileView(
                                     }
                                 } else {
                                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        ProfileDetailRow(Icons.Outlined.CalendarToday, "Date of Birth", "12 May 1996")
-                                        ProfileDetailRow(Icons.Outlined.Person, "Gender", "Male")
-                                        ProfileDetailRow(Icons.Outlined.Phone, "Phone Number", patientPhone)
-                                        ProfileDetailRow(Icons.Outlined.Email, "Email", "aarav.sharma@email.com")
+                                        ProfileDetailRow(Icons.Outlined.CalendarToday, "Date of Birth", patientProfile?.date_of_birth ?: "12 May 1996")
+                                        ProfileDetailRow(Icons.Outlined.Person, "Gender", patientProfile?.gender ?: "Male")
+                                        ProfileDetailRow(Icons.Outlined.Phone, "Phone Number", patientProfile?.phone ?: patientPhone)
+                                        ProfileDetailRow(Icons.Outlined.Email, "Email", patientProfile?.email ?: "aarav.sharma@email.com")
                                         ProfileDetailRow(Icons.Outlined.Home, "Address", "221B Baker Street, London, UK")
                                     }
                                 }
@@ -314,9 +338,9 @@ fun UserProfileView(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    InfoMiniCard("Blood Group", "B+", modifier = Modifier.weight(1f))
-                                    InfoMiniCard("Allergies", "Penicillin", modifier = Modifier.weight(1f))
-                                    InfoMiniCard("Conditions", "None", modifier = Modifier.weight(1f))
+                                    InfoMiniCard("Blood Group", patientProfile?.blood_group ?: "B+", modifier = Modifier.weight(1f))
+                                    InfoMiniCard("Allergies", patientProfile?.allergies ?: "Penicillin", modifier = Modifier.weight(1f))
+                                    InfoMiniCard("Conditions", patientProfile?.conditions ?: "None", modifier = Modifier.weight(1f))
                                 }
                             }
                         }
@@ -330,9 +354,9 @@ fun UserProfileView(
                                 Text("ETO Information", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    ProfileDetailRow(Icons.Outlined.CalendarToday, "Member Since", "12 Jan 2024")
-                                    ProfileDetailRow(Icons.Outlined.Home, "Saved Hospitals", "5 Hospitals")
-                                    ProfileDetailRow(Icons.Outlined.Assignment, "Appointment History", "18 Appointments")
+                                    ProfileDetailRow(Icons.Outlined.CalendarToday, "Member Since", patientProfile?.created_at ?: "12 Jan 2024")
+                                    ProfileDetailRow(Icons.Outlined.Home, "Saved Hospitals", "${patientProfile?.savedHospitalsCount ?: 5} Hospitals")
+                                    ProfileDetailRow(Icons.Outlined.Assignment, "Appointment History", "${patientProfile?.appointmentCount ?: 18} Appointments")
                                 }
                             }
                         }
@@ -341,6 +365,7 @@ fun UserProfileView(
                     UserRole.DOCTOR -> {
                         // Availability Toggle & Schedule
                         item {
+                            val isDocAvailable = doctorProfile?.isAvailable ?: (currentDoctor?.isAvailable == true)
                             SpotlightCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 cornerRadius = 24.dp
@@ -361,22 +386,23 @@ fun UserProfileView(
                                                 modifier = Modifier
                                                     .size(8.dp)
                                                     .clip(CircleShape)
-                                                    .background(if (currentDoctor?.isAvailable == true) SuccessGreen else ErrorRed)
+                                                    .background(if (isDocAvailable) SuccessGreen else ErrorRed)
                                             )
                                             Text(
-                                                text = if (currentDoctor?.isAvailable == true) "Available" else "Off Duty",
+                                                text = if (isDocAvailable) "Available" else "Off Duty",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (currentDoctor?.isAvailable == true) SuccessGreen else ErrorRed
+                                                color = if (isDocAvailable) SuccessGreen else ErrorRed
                                             )
                                         }
                                     }
 
                                     Switch(
-                                        checked = currentDoctor?.isAvailable == true,
+                                        checked = isDocAvailable,
                                         onCheckedChange = {
-                                            if (currentDoctor != null) {
-                                                viewModel.toggleDoctorAvailability(currentDoctor.id, it)
+                                            val docId = doctorProfile?.id ?: currentDoctor?.id
+                                            if (docId != null) {
+                                                viewModel.toggleDoctorAvailability(docId, it)
                                             }
                                         }
                                     )
@@ -385,9 +411,9 @@ fun UserProfileView(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    ProfileDetailRow(Icons.Outlined.CalendarToday, "Working Days", "Mon - Sat")
-                                    ProfileDetailRow(Icons.Outlined.Schedule, "Consultation Hours", "09:00 AM - 05:00 PM")
-                                    ProfileDetailRow(Icons.Outlined.Timer, "Appointment Duration", "15 mins per patient")
+                                    ProfileDetailRow(Icons.Outlined.CalendarToday, "Working Days", doctorProfile?.working_days ?: "Mon - Sat")
+                                    ProfileDetailRow(Icons.Outlined.Schedule, "Consultation Hours", doctorProfile?.consultation_hours ?: "09:00 AM - 05:00 PM")
+                                    ProfileDetailRow(Icons.Outlined.Timer, "Appointment Duration", doctorProfile?.appointment_duration ?: "15 mins per patient")
                                 }
                             }
                         }
@@ -401,11 +427,11 @@ fun UserProfileView(
                                 Text("Professional Information", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    ProfileDetailRow(Icons.Outlined.Star, "Specialization", "Cardiologist")
-                                    ProfileDetailRow(Icons.Outlined.Home, "Department", "Cardiology")
-                                    ProfileDetailRow(Icons.Outlined.Assignment, "Qualification", "MBBS, MD (Cardiology)")
-                                    ProfileDetailRow(Icons.Outlined.Timer, "Experience", "10+ Years")
-                                    ProfileDetailRow(Icons.Outlined.AttachMoney, "Consultation Fee", "₹800")
+                                    ProfileDetailRow(Icons.Outlined.Star, "Specialization", doctorProfile?.specialization ?: "Cardiologist")
+                                    ProfileDetailRow(Icons.Outlined.Home, "Department", doctorProfile?.department_name ?: "Cardiology")
+                                    ProfileDetailRow(Icons.Outlined.Assignment, "Qualification", doctorProfile?.qualification ?: "MBBS, MD (Cardiology)")
+                                    ProfileDetailRow(Icons.Outlined.Timer, "Experience", doctorProfile?.experience ?: "10+ Years")
+                                    ProfileDetailRow(Icons.Outlined.AttachMoney, "Consultation Fee", "₹${doctorProfile?.consultation_fee?.toInt() ?: 800}")
                                 }
                             }
                         }
@@ -419,10 +445,10 @@ fun UserProfileView(
                                 Text("Contact & Workplace", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    ProfileDetailRow(Icons.Outlined.Home, "Hospital", "City Care Hospital")
-                                    ProfileDetailRow(Icons.Outlined.Assignment, "Room / Cabin", "Cardiology OPD - 204")
-                                    ProfileDetailRow(Icons.Outlined.Phone, "Phone Number", "+91 98765 43210")
-                                    ProfileDetailRow(Icons.Outlined.Email, "Email", "rahul.verma@eto.com")
+                                    ProfileDetailRow(Icons.Outlined.Home, "Hospital", doctorProfile?.hospital_name ?: "City Care Hospital")
+                                    ProfileDetailRow(Icons.Outlined.Assignment, "Room / Cabin", doctorProfile?.room_cabin ?: "Cardiology OPD - 204")
+                                    ProfileDetailRow(Icons.Outlined.Phone, "Phone Number", doctorProfile?.phone ?: "+91 98765 43210")
+                                    ProfileDetailRow(Icons.Outlined.Email, "Email", doctorProfile?.email ?: "rahul.verma@eto.com")
                                 }
                             }
                         }
@@ -438,12 +464,12 @@ fun UserProfileView(
                                 Text("Work Information", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    ProfileDetailRow(Icons.Outlined.Home, "Hospital", "City Care Hospital")
-                                    ProfileDetailRow(Icons.Outlined.Person, "Department", "Front Desk")
-                                    ProfileDetailRow(Icons.Outlined.Assignment, "Designation", "Senior Receptionist")
-                                    ProfileDetailRow(Icons.Outlined.Schedule, "Shift", "Morning Shift")
-                                    ProfileDetailRow(Icons.Outlined.CalendarToday, "Working Days", "Mon - Sat")
-                                    ProfileDetailRow(Icons.Outlined.Timer, "Working Hours", "08:00 AM - 04:00 PM")
+                                    ProfileDetailRow(Icons.Outlined.Home, "Hospital", receptionistProfile?.hospital_name ?: "City Care Hospital")
+                                    ProfileDetailRow(Icons.Outlined.Person, "Department", receptionistProfile?.department_name ?: "Front Desk")
+                                    ProfileDetailRow(Icons.Outlined.Assignment, "Designation", receptionistProfile?.designation ?: "Senior Receptionist")
+                                    ProfileDetailRow(Icons.Outlined.Schedule, "Shift", receptionistProfile?.shift ?: "Morning Shift")
+                                    ProfileDetailRow(Icons.Outlined.CalendarToday, "Working Days", receptionistProfile?.working_days ?: "Mon - Sat")
+                                    ProfileDetailRow(Icons.Outlined.Timer, "Working Hours", receptionistProfile?.working_hours ?: "08:00 AM - 04:00 PM")
                                 }
                             }
                         }

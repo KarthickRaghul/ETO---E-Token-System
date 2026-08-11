@@ -27,4 +27,7 @@ interface EtoRepository {
     suspend fun seedInitialData()
     suspend fun clearAll()
     suspend fun updateDoctorAvailability(doctorId: String, isAvailable: Boolean)
+    suspend fun getPatientProfile(phone: String): com.eto.manager.data.remote.PatientProfileResponse
+    suspend fun getDoctorProfile(doctorId: String): com.eto.manager.data.remote.DoctorProfileResponse
+    suspend fun getReceptionistProfile(phoneOrId: String): com.eto.manager.data.remote.ReceptionistProfileResponse
 }

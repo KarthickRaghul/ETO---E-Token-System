@@ -20,6 +20,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.eto.manager.data.remote.PatientProfileResponse
+import com.eto.manager.data.remote.DoctorProfileResponse
+import com.eto.manager.data.remote.ReceptionistProfileResponse
+
 
 data class NotificationItem(
     val title: String,
@@ -53,6 +57,47 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
     // Doctor Context
     private val _selectedDoctorForView = MutableStateFlow<String>("d1") // Default to Dr. Sarah
     val selectedDoctorForView = _selectedDoctorForView.asStateFlow()
+
+    // Profile States
+    private val _patientProfile = MutableStateFlow<PatientProfileResponse?>(null)
+    val patientProfile = _patientProfile.asStateFlow()
+
+    private val _doctorProfile = MutableStateFlow<DoctorProfileResponse?>(null)
+    val doctorProfile = _doctorProfile.asStateFlow()
+
+    private val _receptionistProfile = MutableStateFlow<ReceptionistProfileResponse?>(null)
+    val receptionistProfile = _receptionistProfile.asStateFlow()
+
+    private val _isProfileLoading = MutableStateFlow(false)
+    val isProfileLoading = _isProfileLoading.asStateFlow()
+
+    fun fetchUserProfile(role: UserRole) {
+        viewModelScope.launch {
+            _isProfileLoading.value = true
+            try {
+                when (role) {
+                    UserRole.PATIENT -> {
+                        val response = repository.getPatientProfile(patientPhone.value)
+                        _patientProfile.value = response
+                    }
+                    UserRole.DOCTOR -> {
+                        val docId = _selectedDoctorForView.value
+                        val response = repository.getDoctorProfile(docId)
+                        _doctorProfile.value = response
+                    }
+                    UserRole.RECEPTIONIST -> {
+                        val response = repository.getReceptionistProfile("EMP-RECP-001")
+                        _receptionistProfile.value = response
+                    }
+                    UserRole.ADMIN -> {}
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("EtoViewModel", "Error fetching user profile", e)
+            } finally {
+                _isProfileLoading.value = false
+            }
+        }
+    }
 
     // Simulated Phone Alerts
     private val _notifications = MutableStateFlow<List<NotificationItem>>(emptyList())
@@ -91,6 +136,20 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
             viewModelScope, SharingStarted.Lazily, emptyList()
         )
 
+        // Map mock default doctor ID to actual database UUID when doctor list is loaded
+        viewModelScope.launch {
+            doctors.collect { doctorList ->
+                if (doctorList.isNotEmpty() && _selectedDoctorForView.value == "d1") {
+                    val sarah = doctorList.find { it.name.contains("Sarah", ignoreCase = true) }
+                    if (sarah != null) {
+                        _selectedDoctorForView.value = sarah.id
+                    } else {
+                        _selectedDoctorForView.value = doctorList.first().id
+                    }
+                }
+            }
+        }
+
         // Start background queue progression loop
         startSimulation()
     }
@@ -108,8 +167,21 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleDoctorAvailability(doctorId: String, isAvailable: Boolean) {
+        // 1. Optimistically update local profile state for instant visual feedback
+        val currentProfile = _doctorProfile.value
+        if (currentProfile != null && currentProfile.id == doctorId) {
+            _doctorProfile.value = currentProfile.copy(isAvailable = isAvailable)
+        }
+
         viewModelScope.launch {
-            repository.updateDoctorAvailability(doctorId, isAvailable)
+            try {
+                repository.updateDoctorAvailability(doctorId, isAvailable)
+                // 2. Reload the profile from DB source-of-truth
+                val response = repository.getDoctorProfile(doctorId)
+                _doctorProfile.value = response
+            } catch (e: Exception) {
+                android.util.Log.e("EtoViewModel", "Error updating availability", e)
+            }
         }
     }
 

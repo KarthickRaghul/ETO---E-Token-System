@@ -160,7 +160,10 @@ fun EtoAppShell(
                     patientName = patientName,
                     doctorName = doctorName,
                     onNotificationClick = { showPhoneSimulator = !showPhoneSimulator },
-                    onProfileClick = { showProfileModal = true },
+                    onProfileClick = {
+                        viewModel.fetchUserProfile(currentRole)
+                        showProfileModal = true
+                    },
                     onRoleChange = { role ->
                         viewModel.setRole(role)
                         activeTab = 0 // Reset tab when role changes
@@ -199,18 +202,12 @@ fun EtoAppShell(
                         viewModel = viewModel,
                         activeTab = activeTab,
                         onNotificationClick = { showPhoneSimulator = !showPhoneSimulator },
-                        onProfileClick = { showProfileModal = true }
+                        onProfileClick = {
+                            viewModel.fetchUserProfile(currentRole)
+                            showProfileModal = true
+                        }
                     )
                     UserRole.ADMIN -> AdminView(viewModel, activeTab)
-                }
-
-                // Profile Modal Dialog
-                if (showProfileModal) {
-                    UserProfileView(
-                        currentRole = currentRole,
-                        viewModel = viewModel,
-                        onDismiss = { showProfileModal = false }
-                    )
                 }
 
                 // Phone SMS alerts panel drawer
@@ -226,6 +223,15 @@ fun EtoAppShell(
                     )
                 }
             }
+        }
+
+        // Profile Modal Dialog
+        if (showProfileModal) {
+            UserProfileView(
+                currentRole = currentRole,
+                viewModel = viewModel,
+                onDismiss = { showProfileModal = false }
+            )
         }
     }
 }

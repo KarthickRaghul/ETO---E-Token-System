@@ -247,13 +247,21 @@ fun Modifier.bounceClick(): Modifier = composed {
             scaleY = scale
         }
         .pointerInput(Unit) {
-            detectTapGestures(
-                onPress = {
-                    isPressed = true
-                    tryAwaitRelease()
-                    isPressed = false
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent()
+                    if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Press) {
+                        isPressed = true
+                    } else if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Release) {
+                        isPressed = false
+                    } else {
+                        val anyPressed = event.changes.any { it.pressed }
+                        if (!anyPressed) {
+                            isPressed = false
+                        }
+                    }
                 }
-            )
+            }
         }
 }
 
@@ -353,18 +361,24 @@ fun SpotlightCard(
     Box(
         modifier = modifier
             .glassmorphicCard(isDark, cornerRadius)
-            .pointerInput(onClick) {
-                detectTapGestures(
-                    onPress = { offset ->
-                        touchPosition = offset
-                        tryAwaitRelease()
-                        touchPosition = Offset.Unspecified
-                    },
-                    onTap = {
-                        onClick?.invoke()
+            .then(
+                if (onClick != null) {
+                    Modifier.pointerInput(onClick) {
+                        detectTapGestures(
+                            onPress = { offset ->
+                                touchPosition = offset
+                                tryAwaitRelease()
+                                touchPosition = Offset.Unspecified
+                            },
+                            onTap = {
+                                onClick.invoke()
+                            }
+                        )
                     }
-                )
-            }
+                } else {
+                    Modifier
+                }
+            )
             .drawWithContent {
                 drawContent()
                 if (touchPosition != Offset.Unspecified) {
