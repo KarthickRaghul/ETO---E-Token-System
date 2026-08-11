@@ -5,9 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.eto.manager.data.local.entity.DepartmentEntity
-import com.eto.manager.data.local.entity.DoctorEntity
-import com.eto.manager.data.local.entity.TokenEntity
+import com.eto.manager.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -68,4 +66,85 @@ interface TokenDao {
 
     @Query("DELETE FROM tokens")
     suspend fun clearAllTokens()
+}
+
+@Dao
+interface UserDao {
+    @Query("SELECT * FROM users WHERE id = :id")
+    suspend fun getUserById(id: String): UserEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUsers(users: List<UserEntity>)
+}
+
+@Dao
+interface HospitalDao {
+    @Query("SELECT * FROM hospitals")
+    fun getAllHospitals(): Flow<List<HospitalEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHospitals(hospitals: List<HospitalEntity>)
+}
+
+@Dao
+interface PatientDao {
+    @Query("SELECT * FROM patients WHERE id = :id")
+    suspend fun getPatientById(id: String): PatientEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPatients(patients: List<PatientEntity>)
+}
+
+@Dao
+interface AppointmentDao {
+    @Query("SELECT * FROM appointments ORDER BY appointmentDate DESC")
+    fun getAllAppointments(): Flow<List<AppointmentEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAppointments(appointments: List<AppointmentEntity>)
+}
+
+@Dao
+interface QueueEntryDao {
+    @Query("SELECT * FROM queue_entries WHERE doctorId = :doctorId")
+    fun getQueueEntriesForDoctor(doctorId: String): Flow<List<QueueEntryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertQueueEntries(entries: List<QueueEntryEntity>)
+}
+
+@Dao
+interface ConsultationDao {
+    @Query("SELECT * FROM consultations WHERE tokenId = :tokenId")
+    suspend fun getConsultationForToken(tokenId: String): ConsultationEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertConsultations(consultations: List<ConsultationEntity>)
+}
+
+@Dao
+interface PrescriptionDao {
+    @Query("SELECT * FROM prescriptions WHERE consultationId = :consultationId")
+    suspend fun getPrescriptionForConsultation(consultationId: String): PrescriptionEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPrescriptions(prescriptions: List<PrescriptionEntity>)
+}
+
+@Dao
+interface BillDao {
+    @Query("SELECT * FROM bills WHERE tokenId = :tokenId")
+    suspend fun getBillForToken(tokenId: String): BillEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBills(bills: List<BillEntity>)
+}
+
+@Dao
+interface NotificationDao {
+    @Query("SELECT * FROM notifications ORDER BY createdAt DESC")
+    fun getAllNotifications(): Flow<List<NotificationEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNotifications(notifications: List<NotificationEntity>)
 }

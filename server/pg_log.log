@@ -1,0 +1,65 @@
+2026-08-10 14:52:55.131 IST [107420] LOG:  starting PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.1.1 20260728, 64-bit
+2026-08-10 14:52:55.132 IST [107420] LOG:  listening on IPv6 address "::1", port 5432
+2026-08-10 14:52:55.132 IST [107420] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2026-08-10 14:52:55.136 IST [107420] FATAL:  could not create lock file "/run/postgresql/.s.PGSQL.5432.lock": No such file or directory
+2026-08-10 14:52:55.138 IST [107420] LOG:  database system is shut down
+2026-08-10 14:53:04.385 IST [107467] LOG:  starting PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.1.1 20260728, 64-bit
+2026-08-10 14:53:04.386 IST [107467] LOG:  listening on IPv6 address "::1", port 5432
+2026-08-10 14:53:04.386 IST [107467] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2026-08-10 14:53:04.394 IST [107467] LOG:  listening on Unix socket "/home/karthi/Projects/Eto/server/.s.PGSQL.5432"
+2026-08-10 14:53:04.405 IST [107473] LOG:  database system was shut down at 2026-08-07 14:58:17 IST
+2026-08-10 14:53:04.412 IST [107467] LOG:  database system is ready to accept connections
+2026-08-10 14:53:04.429 IST [107467] LOG:  received SIGHUP, reloading configuration files
+2026-08-10 14:57:49.626 IST [108601] ERROR:  column "hospital_id" does not exist
+2026-08-10 14:57:49.626 IST [108601] STATEMENT:  CREATE TABLE IF NOT EXISTS doctors (
+	    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+	    doctor_number VARCHAR(50) UNIQUE NOT NULL,
+	    specialization VARCHAR(100) NOT NULL,
+	    qualification VARCHAR(100) NOT NULL,
+	    experience_years INT NOT NULL DEFAULT 0 CHECK (experience_years >= 0),
+	    consultation_fee DECIMAL(10, 2) NOT NULL DEFAULT 0.0 CHECK (consultation_fee >= 0),
+	    bio TEXT,
+	    hospital_id UUID NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
+	    department_id UUID, -- Foreign Key will be added in departments migration
+	    consultation_room VARCHAR(50),
+	    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+	    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	
+	CREATE INDEX IF NOT EXISTS idx_doctors_hospital_id ON doctors(hospital_id);
+	CREATE INDEX IF NOT EXISTS idx_doctors_is_available ON doctors(is_available);
+	
+2026-08-10 14:58:04.464 IST [107471] LOG:  checkpoint starting: time
+2026-08-10 14:58:16.215 IST [107471] LOG:  checkpoint complete: wrote 112 buffers (0.7%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=11.236 s, sync=0.493 s, total=11.752 s; sync files=191, longest=0.005 s, average=0.003 s; distance=688 kB, estimate=688 kB; lsn=0/1E24528, redo lsn=0/1CC0808
+2026-08-10 14:58:36.394 IST [108885] ERROR:  relation "administrators" does not exist at character 20
+2026-08-10 14:58:36.394 IST [108885] STATEMENT:  
+	      INSERT INTO administrators (id, user_id, employee_number, hospital_id, admin_level, is_active)
+	      VALUES ($1, $2, 'EMP-ADMIN-001', $3, 'HOSPITAL', TRUE)
+	      ON CONFLICT (employee_number) DO NOTHING;
+	    
+2026-08-10 14:59:07.153 IST [109017] ERROR:  column "employee_number" of relation "administrators" does not exist at character 49
+2026-08-10 14:59:07.153 IST [109017] STATEMENT:  
+	      INSERT INTO administrators (id, user_id, employee_number, hospital_id, admin_level, is_active)
+	      VALUES ($1, $2, 'EMP-ADMIN-001', $3, 'HOSPITAL', TRUE)
+	      ON CONFLICT (employee_number) DO NOTHING;
+	    
+2026-08-10 14:59:21.619 IST [109098] ERROR:  invalid input syntax for type uuid: "p1000000-0000-0000-0000-891579133063"
+2026-08-10 14:59:21.619 IST [109098] CONTEXT:  unnamed portal parameter $1 = '...'
+2026-08-10 14:59:21.619 IST [109098] STATEMENT:  
+	          INSERT INTO users (id, email, phone, password_hash, role, first_name, last_name, is_active)
+	          VALUES ($1, $2, $3, $4, 'PATIENT', $5, $6, TRUE);
+	        
+2026-08-10 14:59:30.101 IST [109167] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-10 14:59:30.101 IST [109167] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890ab, d1111111-1111-1111-1111-111111111111, 2026-08-10, #CAR-101) already exists.
+2026-08-10 14:59:30.101 IST [109167] STATEMENT:  
+	        INSERT INTO tokens (id, token_number, patient_id, appointment_id, hospital_id, department_id, doctor_id, queue_date, priority, source, status, requested_at, estimated_wait_minutes, created_by, created_at, updated_at)
+	        VALUES ($1, $2, $3, NULL, $4, $5, $6, CURRENT_DATE, 'NORMAL', 'WALK_IN', $7, $8, $9, $10, $11, $11);
+	      
+2026-08-10 15:00:56.727 IST [107467] LOG:  received smart shutdown request
+2026-08-10 15:00:56.736 IST [107467] LOG:  background worker "logical replication launcher" (PID 107476) exited with exit code 1
+2026-08-10 15:00:56.737 IST [107471] LOG:  shutting down
+2026-08-10 15:00:56.745 IST [107471] LOG:  checkpoint starting: shutdown immediate
+2026-08-10 15:00:57.328 IST [107471] LOG:  checkpoint complete: wrote 559 buffers (3.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=0.025 s, sync=0.511 s, total=0.592 s; sync files=817, longest=0.004 s, average=0.001 s; distance=10401 kB, estimate=10401 kB; lsn=0/26E8D38, redo lsn=0/26E8D38
+2026-08-10 15:00:57.344 IST [107467] LOG:  database system is shut down

@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    bill_id UUID NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
+    amount DECIMAL(10, 2) NOT NULL CHECK (amount > 0),
+    payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('CASH', 'CARD', 'UPI', 'ONLINE', 'WALLET')),
+    transaction_id VARCHAR(255),
+    payment_status VARCHAR(50) NOT NULL CHECK (payment_status IN ('PENDING', 'SUCCESS', 'FAILED')),
+    paid_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    paid_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

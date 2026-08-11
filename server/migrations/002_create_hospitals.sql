@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS hospitals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    registration_number VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    address_line VARCHAR(255),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    postal_code VARCHAR(20),
+    latitude DECIMAL(9, 6),
+    longitude DECIMAL(9, 6),
+    opening_time TIME,
+    closing_time TIME,
+    timezone VARCHAR(100) DEFAULT 'Asia/Kolkata',
+    logo_url VARCHAR(512),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

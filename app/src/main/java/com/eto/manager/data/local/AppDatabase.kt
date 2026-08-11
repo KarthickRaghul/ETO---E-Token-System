@@ -4,22 +4,40 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.eto.manager.data.local.dao.DepartmentDao
-import com.eto.manager.data.local.dao.DoctorDao
-import com.eto.manager.data.local.dao.TokenDao
-import com.eto.manager.data.local.entity.DepartmentEntity
-import com.eto.manager.data.local.entity.DoctorEntity
-import com.eto.manager.data.local.entity.TokenEntity
+import com.eto.manager.data.local.dao.*
+import com.eto.manager.data.local.entity.*
 
 @Database(
-    entities = [DoctorEntity::class, DepartmentEntity::class, TokenEntity::class],
-    version = 1,
+    entities = [
+        UserEntity::class,
+        HospitalEntity::class,
+        DepartmentEntity::class,
+        PatientEntity::class,
+        DoctorEntity::class,
+        AppointmentEntity::class,
+        TokenEntity::class,
+        QueueEntryEntity::class,
+        ConsultationEntity::class,
+        PrescriptionEntity::class,
+        BillEntity::class,
+        NotificationEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun doctorDao(): DoctorDao
     abstract fun departmentDao(): DepartmentDao
     abstract fun tokenDao(): TokenDao
+    abstract fun userDao(): UserDao
+    abstract fun hospitalDao(): HospitalDao
+    abstract fun patientDao(): PatientDao
+    abstract fun appointmentDao(): AppointmentDao
+    abstract fun queueEntryDao(): QueueEntryDao
+    abstract fun consultationDao(): ConsultationDao
+    abstract fun prescriptionDao(): PrescriptionDao
+    abstract fun billDao(): BillDao
+    abstract fun notificationDao(): NotificationDao
 
     companion object {
         @Volatile
