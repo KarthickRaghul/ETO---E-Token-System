@@ -156,7 +156,7 @@ fun DoctorView(
                     // Patients List
                     val filteredTokens = remember(doctorQueue, searchQuery) {
                         doctorQueue.filter {
-                            it.status != TokenStatus.COMPLETED &&
+                            (it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING) &&
                             (searchQuery.isEmpty() ||
                             it.patientName.contains(searchQuery, ignoreCase = true) ||
                             it.patientPhone.contains(searchQuery) ||
@@ -164,47 +164,58 @@ fun DoctorView(
                         }.sortedBy { it.id }
                     }
 
-                    if (filteredTokens.isEmpty() && doctorQueue.isEmpty()) {
-                        // Fallback to replica mock data if database is empty to guarantee pixel-perfect replica
-                        val replicaPatients = listOf(
-                            ReplicaPatient("Aarav Sharma", "01", "28 • Male", "Chest Pain", "09:15 AM", true),
-                            ReplicaPatient("Priya Singh", "02", "34 • Female", "Follow-up", "10:30 AM", false),
-                            ReplicaPatient("Rohan Verma", "03", "45 • Male", "Hypertension", "10:45 AM", false),
-                            ReplicaPatient("Neha Sinha", "04", "31 • Female", "Headache", "11:00 AM", false),
-                            ReplicaPatient("Amit Kumar", "05", "52 • Male", "Shortness of Breath", "11:15 AM", false),
-                            ReplicaPatient("Sneha Patel", "06", "26 • Female", "Fatigue", "11:30 AM", false),
-                            ReplicaPatient("Manish Tiwari", "07", "38 • Male", "General Checkup", "11:45 AM", false)
-                        )
+                    if (filteredTokens.isEmpty()) {
+                        if (doctorQueue.isEmpty()) {
+                            // Fallback to replica mock data if database is empty to guarantee pixel-perfect replica
+                            val replicaPatients = listOf(
+                                ReplicaPatient("Aarav Sharma", "01", "28 • Male", "Chest Pain", "09:15 AM", true),
+                                ReplicaPatient("Priya Singh", "02", "34 • Female", "Follow-up", "10:30 AM", false),
+                                ReplicaPatient("Rohan Verma", "03", "45 • Male", "Hypertension", "10:45 AM", false),
+                                ReplicaPatient("Neha Sinha", "04", "31 • Female", "Headache", "11:00 AM", false),
+                                ReplicaPatient("Amit Kumar", "05", "52 • Male", "Shortness of Breath", "11:15 AM", false),
+                                ReplicaPatient("Sneha Patel", "06", "26 • Female", "Fatigue", "11:30 AM", false),
+                                ReplicaPatient("Manish Tiwari", "07", "38 • Male", "General Checkup", "11:45 AM", false)
+                            )
 
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            items(replicaPatients) { item ->
-                                ReplicaPatientCard(
-                                    patient = item,
-                                    isDark = isDark,
-                                    onClick = {
-                                        // Create a temporary database token representation to trigger workspace
-                                        val tempToken = Token(
-                                            id = item.tokenNumber.toLongOrNull() ?: 1L,
-                                            tokenNumber = item.tokenNumber,
-                                            patientName = item.name,
-                                            patientPhone = "9876543210",
-                                            doctorId = activeDocId,
-                                            doctorName = currentDoctor?.name ?: "Dr. Rahul Verma",
-                                            departmentName = currentDoctor?.departmentName ?: "Cardiology",
-                                            symptoms = item.symptoms,
-                                            status = if (item.isCurrent) TokenStatus.SERVING else TokenStatus.APPROVED,
-                                            queuePosition = item.tokenNumber.toIntOrNull() ?: 1,
-                                            estimatedWaitMinutes = 0,
-                                            createdAt = System.currentTimeMillis()
-                                        )
-                                        activeConsultToken = tempToken
-                                    }
-                                )
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                items(replicaPatients) { item ->
+                                    ReplicaPatientCard(
+                                        patient = item,
+                                        isDark = isDark,
+                                        onClick = {
+                                            // Create a temporary database token representation to trigger workspace
+                                            val tempToken = Token(
+                                                id = item.tokenNumber.toLongOrNull() ?: 1L,
+                                                tokenNumber = item.tokenNumber,
+                                                patientName = item.name,
+                                                patientPhone = "9876543210",
+                                                doctorId = activeDocId,
+                                                doctorName = currentDoctor?.name ?: "Dr. Rahul Verma",
+                                                departmentName = currentDoctor?.departmentName ?: "Cardiology",
+                                                symptoms = item.symptoms,
+                                                status = if (item.isCurrent) TokenStatus.SERVING else TokenStatus.APPROVED,
+                                                queuePosition = item.tokenNumber.toIntOrNull() ?: 1,
+                                                estimatedWaitMinutes = 0,
+                                                createdAt = System.currentTimeMillis(),
+                                                hospitalName = "City Care Hospital"
+                                            )
+                                            activeConsultToken = tempToken
+                                        }
+                                    )
+                                }
+                                item { Spacer(modifier = Modifier.height(90.dp)) }
                             }
-                            item { Spacer(modifier = Modifier.height(90.dp)) }
+                        } else {
+                            // Show a proper EmptyState if database has data but no active queue patients right now
+                            Box(
+                                modifier = Modifier.fillMaxSize().weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                EmptyState(message = "No active patients in your queue currently.")
+                            }
                         }
                     } else {
                         LazyColumn(

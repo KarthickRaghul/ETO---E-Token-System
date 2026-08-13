@@ -24,7 +24,9 @@ data class HospitalEntity(
     val phone: String?,
     val email: String?,
     val city: String?,
-    val state: String?
+    val state: String?,
+    val latitude: Double = 13.0827,
+    val longitude: Double = 80.2707
 )
 
 @Entity(tableName = "departments")
@@ -89,7 +91,8 @@ data class TokenEntity(
     val diagnosis: String? = null,
     val prescription: String? = null,
     val billAmount: Double = 0.0,
-    val paymentStatus: String = "PENDING" // PENDING, PAID
+    val paymentStatus: String = "PENDING", // PENDING, PAID
+    val hospitalName: String = "City Care Hospital"
 )
 
 @Entity(tableName = "queue_entries")

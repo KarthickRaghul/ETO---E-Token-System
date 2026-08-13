@@ -12,6 +12,7 @@
         android:label="ETO Online"
         android:roundIcon="@drawable/logo"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Eto">
         <activity
             android:name=".presentation.MainActivity"

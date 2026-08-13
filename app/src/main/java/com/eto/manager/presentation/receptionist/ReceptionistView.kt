@@ -403,7 +403,7 @@ fun ReceptionistQueuePatientCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = token.departmentName,
+                    text = "${token.departmentName} • ${token.doctorName}",
                     fontSize = 12.sp,
                     color = avatarText,
                     fontWeight = FontWeight.Medium

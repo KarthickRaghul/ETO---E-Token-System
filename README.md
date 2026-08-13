@@ -134,16 +134,12 @@ PGPORT=5432
 #### Install Dependencies and Run
 From the root of the project:
 ```bash
-# Navigate to the server folder
+# Start the backend server using the helper script
+./run_server.sh
+
+# Or manually:
 cd server
-
-# Install Node modules
 npm install
-
-# Start the server (runs on port 3000 by default)
-npm start
-
-# Alternatively, run in development mode with automatic restarts on change
 npm run dev
 ```
 The server will initialize the database, verify/create tables (`departments`, `doctors`, `tokens`), and automatically seed mock doctors and departments.
@@ -159,15 +155,28 @@ The server will initialize the database, verify/create tables (`departments`, `d
 
 #### Connection Endpoint Configuration
 * **Emulator**: By default, the app is configured to connect to `10.0.2.2:3000`, which is the loopback alias pointing to your host computer from inside the Android Emulator.
-* **Physical Device**: If you run the app on a physical phone connected over Wi-Fi, change the base addresses to matching values of your computer's local IP address (e.g. `192.168.1.50`):
-  * Edit [SocketManager.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/SocketManager.kt#L8):
-    ```kotlin
-    private const val SOCKET_URL = "http://192.168.1.50:3000"
-    ```
-  * Edit [RetrofitClient.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/RetrofitClient.kt#L11):
-    ```kotlin
-    private const val BASE_URL = "http://192.168.1.50:3000/"
-    ```
+* **Physical Device**: If you run the app on a physical phone connected over Wi-Fi, change the base addresses to matching values of your computer's local IP address:
+
+  1. **Get your laptop's local IP address** (on Linux):
+     ```bash
+     ip route get 1.1.1.1 | awk '{print $7}'
+     ```
+     *(This will print something like `192.168.1.50`)*
+
+  2. **Update the address in the Android app**:
+     * Edit [SocketManager.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/SocketManager.kt#L8):
+       ```kotlin
+       private const val SOCKET_URL = "http://YOUR_LAPTOP_IP:3000"
+       ```
+     * Edit [RetrofitClient.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/RetrofitClient.kt#L11):
+       ```kotlin
+       private const val BASE_URL = "http://YOUR_LAPTOP_IP:3000/"
+       ```
+
+  3. **Allow incoming traffic through your firewall** (if blocked):
+     ```bash
+     sudo ufw allow 3000/tcp
+     ```
 
 #### Run in Android Studio
 1. Open **Android Studio** and choose **Open Project**.

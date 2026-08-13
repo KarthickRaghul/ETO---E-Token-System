@@ -31,3 +31,4 @@ server/node_modules/
 server/db_data/
 server/.env
 server/npm-debug.log
+server/sent_mails/

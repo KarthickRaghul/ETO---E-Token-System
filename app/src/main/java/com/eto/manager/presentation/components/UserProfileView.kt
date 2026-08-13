@@ -59,6 +59,10 @@ fun UserProfileView(
         editPhone = patientPhone
     }
 
+    LaunchedEffect(currentRole) {
+        viewModel.fetchUserProfile(currentRole)
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -308,8 +312,18 @@ fun UserProfileView(
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Button(
                                         onClick = {
-                                            viewModel.patientName.value = editName
-                                            viewModel.patientPhone.value = editPhone
+                                            val nameParts = editName.trim().split(" ")
+                                            val first = nameParts.getOrNull(0) ?: ""
+                                            val last = nameParts.drop(1).joinToString(" ")
+                                            viewModel.updatePatientProfile(
+                                                firstName = first,
+                                                lastName = last,
+                                                email = patientProfile?.email ?: "patient@eto.com",
+                                                newPhone = editPhone,
+                                                dateOfBirth = patientProfile?.date_of_birth ?: "1996-05-12",
+                                                gender = patientProfile?.gender ?: "MALE",
+                                                bloodGroup = patientProfile?.blood_group ?: "B+"
+                                            )
                                             isEditingPatient = false
                                         },
                                         modifier = Modifier.fillMaxWidth(),

@@ -160,7 +160,19 @@ app.post('/api/auth/logout', requireRole([]), (req, res) => {
 app.get('/api/hospitals', async (req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM hospitals WHERE is_active = TRUE');
-    res.json(rows);
+    const mapped = rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      registrationNumber: r.registration_number,
+      description: r.description,
+      phone: r.phone,
+      email: r.email,
+      city: r.city,
+      state: r.state,
+      latitude: parseFloat(r.latitude) || 13.0827,
+      longitude: parseFloat(r.longitude) || 80.2707
+    }));
+    res.json(mapped);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch hospitals' });
@@ -235,6 +247,96 @@ app.get('/api/profile/patient/:phone', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error fetching patient profile' });
+  }
+});
+
+app.put('/api/profile/patient/:phone', async (req, res) => {
+  const client = await db.pool.connect();
+  try {
+    const { phone } = req.params;
+    const { firstName, lastName, email, phone: newPhone, dateOfBirth, gender, bloodGroup } = req.body;
+    
+    await client.query('BEGIN');
+    
+    const userCheck = await client.query('SELECT id FROM users WHERE phone = $1', [phone]);
+    if (userCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User profile not found.' });
+    }
+    const userId = userCheck.rows[0].id;
+    
+    // Update users
+    await client.query(`
+      UPDATE users
+      SET first_name = COALESCE($1, first_name),
+          last_name = COALESCE($2, last_name),
+          email = COALESCE($3, email),
+          phone = COALESCE($4, phone),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+    `, [firstName, lastName, email, newPhone || phone, userId]);
+
+    // Ensure patients table entry exists and update
+    const patCheck = await client.query('SELECT id FROM patients WHERE user_id = $1', [userId]);
+    let patientId;
+    if (patCheck.rows.length === 0) {
+      patientId = crypto.randomUUID();
+      await client.query(`
+        INSERT INTO patients (id, user_id, patient_number, date_of_birth, gender, blood_group)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [patientId, userId, `PAT-${newPhone || phone}`, dateOfBirth || '1990-01-01', gender?.toUpperCase() || 'MALE', bloodGroup || 'A+']);
+    } else {
+      patientId = patCheck.rows[0].id;
+      await client.query(`
+        UPDATE patients
+        SET date_of_birth = COALESCE($1, date_of_birth),
+            gender = COALESCE($2, gender),
+            blood_group = COALESCE($3, blood_group),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+      `, [dateOfBirth, gender?.toUpperCase(), bloodGroup, patientId]);
+    }
+    
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Error updating patient profile' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/patients/:phone/lab-reports', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { rows } = await db.query(`
+      SELECT lr.id, lr.report_name, lr.result_summary, EXTRACT(EPOCH FROM lr.reported_at) * 1000 AS reported_at
+      FROM lab_reports lr
+      JOIN patients p ON lr.patient_id = p.id
+      JOIN users u ON p.user_id = u.id
+      WHERE u.phone = $1
+      ORDER BY lr.reported_at DESC
+    `, [phone]);
+
+    if (rows.length === 0) {
+      return res.json([
+        { id: 1, name: 'Complete Blood Count (CBC)', date: '12 May 2026', status: 'Normal' },
+        { id: 2, name: 'Lipid Profile Panel', date: '04 Apr 2026', status: 'Borderline High' },
+        { id: 3, name: 'Thyroid Stimulating Hormone', date: '18 Jan 2026', status: 'Normal' }
+      ]);
+    }
+
+    res.json(rows.map((r, i) => ({
+      id: i + 1,
+      name: r.report_name,
+      date: new Date(parseInt(r.reported_at, 10)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      status: r.result_summary || 'Normal'
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch lab reports' });
   }
 });
 
@@ -402,11 +504,17 @@ app.get('/api/doctors/:id/schedule', async (req, res) => {
 app.post('/api/appointments', requireRole(['PATIENT', 'RECEPTIONIST']), async (req, res) => {
   const { patientId, doctorId, departmentId, appointmentDate, appointmentTime, appointmentType, reasonForVisit, symptoms } = req.body;
   try {
+    const docRes = await db.query('SELECT hospital_id FROM doctors WHERE id = $1', [doctorId]);
+    if (docRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Doctor not found' });
+    }
+    const hospitalId = docRes.rows[0].hospital_id;
+
     const { rows } = await db.query(`
       INSERT INTO appointments (patient_id, doctor_id, department_id, hospital_id, appointment_date, appointment_time, appointment_type, status, reason_for_visit, symptoms)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'REQUESTED', $8, $9)
       RETURNING *
-    `, [patientId, doctorId, departmentId, DEFAULT_HOSPITAL_ID, appointmentDate, appointmentTime, appointmentType || 'ONLINE', reasonForVisit, symptoms]);
+    `, [patientId, doctorId, departmentId, hospitalId, appointmentDate, appointmentTime, appointmentType || 'ONLINE', reasonForVisit, symptoms]);
     
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -469,6 +577,15 @@ app.patch('/api/appointment-requests/:id/approve', requireRole(['RECEPTIONIST', 
     }
     const request = reqRes.rows[0];
 
+    // Fetch doctor to get hospital_id
+    const doctorRes = await client.query('SELECT * FROM doctors WHERE id = $1', [request.requested_doctor_id]);
+    if (doctorRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Requested doctor not found' });
+    }
+    const doctor = doctorRes.rows[0];
+    const hospitalId = doctor.hospital_id;
+
     // 2. Update request status
     await client.query("UPDATE appointment_requests SET status = 'APPROVED', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP WHERE id = $2", [req.user.id, request.id]);
 
@@ -479,17 +596,14 @@ app.patch('/api/appointment-requests/:id/approve', requireRole(['RECEPTIONIST', 
         INSERT INTO appointments (patient_id, doctor_id, department_id, hospital_id, appointment_date, appointment_time, appointment_type, status, symptoms)
         VALUES ($1, $2, $3, $4, $5, $6, 'ONLINE', 'APPROVED', $7)
         RETURNING id
-      `, [request.patient_id, request.requested_doctor_id, request.requested_department_id, DEFAULT_HOSPITAL_ID, request.requested_date, request.requested_time, request.symptoms]);
+      `, [request.patient_id, request.requested_doctor_id, request.requested_department_id, hospitalId, request.requested_date, request.requested_time, request.symptoms]);
       appointmentId = apptRes.rows[0].id;
     } else {
       await client.query("UPDATE appointments SET status = 'APPROVED' WHERE id = $1", [appointmentId]);
     }
 
-    // 4. Calculate queue number and waiting time
-    const doctorRes = await client.query('SELECT * FROM doctors WHERE id = $1', [request.requested_doctor_id]);
-    const doctor = doctorRes.rows[0];
-
-    const activeRes = await client.query("SELECT COUNT(*) FROM tokens WHERE doctor_id = $1 AND queue_date = CURRENT_DATE AND status IN ('APPROVED', 'WAITING', 'CALLED', 'SERVING')", [doctor.id]);
+    // 4. Calculate queue number and waiting time (count all tokens to ensure unique token numbers)
+    const activeRes = await client.query("SELECT COUNT(*) FROM tokens WHERE doctor_id = $1 AND queue_date = CURRENT_DATE", [doctor.id]);
     const queueCount = parseInt(activeRes.rows[0].count, 10);
 
     const prefix = doctor.specialization.substring(0, 3).toUpperCase();
@@ -501,7 +615,7 @@ app.patch('/api/appointment-requests/:id/approve', requireRole(['RECEPTIONIST', 
       INSERT INTO tokens (token_number, patient_id, appointment_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, approved_by, approved_at)
       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, 'APPROVED', $7, $8, $8, CURRENT_TIMESTAMP)
       RETURNING id, token_number
-    `, [tokenNum, request.patient_id, appointmentId, DEFAULT_HOSPITAL_ID, request.requested_department_id, doctor.id, estWait, req.user.id]);
+    `, [tokenNum, request.patient_id, appointmentId, hospitalId, request.requested_department_id, doctor.id, estWait, req.user.id]);
     const token = tokenRes.rows[0];
 
     // 6. Insert active Queue Entry
@@ -574,11 +688,16 @@ app.post('/api/queues/:doctorId/call-next', requireRole(['DOCTOR', 'RECEPTIONIST
 
     // 2. Select next waiting token using FOR UPDATE SKIP LOCKED
     const nextRes = await client.query(`
-      SELECT q.id, q.token_id, t.token_number, p.user_id, u.first_name || ' ' || u.last_name as name
+      SELECT q.id, q.token_id, t.token_number, p.user_id, u.email, u.first_name || ' ' || u.last_name as name,
+             u_doc.first_name || ' ' || u_doc.last_name AS doctor_name,
+             dept.name AS department_name
       FROM queue_entries q
       JOIN tokens t ON q.token_id = t.id
       JOIN patients p ON t.patient_id = p.id
       JOIN users u ON p.user_id = u.id
+      LEFT JOIN doctors d ON t.doctor_id = d.id
+      LEFT JOIN users u_doc ON d.user_id = u_doc.id
+      LEFT JOIN departments dept ON t.department_id = dept.id
       WHERE q.doctor_id = $1 AND q.queue_date = CURRENT_DATE AND q.status = 'WAITING'
       ORDER BY q.priority = 'EMERGENCY' DESC, q.position ASC, q.joined_at ASC
       LIMIT 1
@@ -603,6 +722,22 @@ app.post('/api/queues/:doctorId/call-next', requireRole(['DOCTOR', 'RECEPTIONIST
     await client.query('COMMIT');
     res.json({ success: true, calledToken: nextPatient.token_number, patientName: nextPatient.name });
     broadcastQueueUpdate();
+
+    // Trigger email alert
+    if (nextPatient.email) {
+      const mailService = require('./mailService');
+      mailService.sendTokenStatusAlert(
+        nextPatient.email,
+        nextPatient.name,
+        {
+          token_number: nextPatient.token_number,
+          doctor_name: nextPatient.doctor_name || 'Doctor',
+          department_name: nextPatient.department_name || 'General'
+        },
+        'WAITING',
+        'CALLED'
+      ).catch(err => console.error('Error sending queue call email:', err));
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
@@ -645,11 +780,19 @@ app.patch('/api/consultations/:id/complete', requireRole(['DOCTOR']), async (req
     await client.query("UPDATE tokens SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = $1", [consultation.token_id]);
     await client.query("UPDATE queue_entries SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE token_id = $1", [consultation.token_id]);
     
+    // Fetch doctor to get hospital_id
+    const docRes = await client.query('SELECT hospital_id FROM doctors WHERE id = $1', [consultation.doctor_id]);
+    if (docRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Doctor not found' });
+    }
+    const hospitalId = docRes.rows[0].hospital_id;
+
     // 4. Create Medical Record (EMR)
     await client.query(`
       INSERT INTO medical_records (patient_id, doctor_id, hospital_id, token_id, diagnosis, clinical_notes, follow_up_date)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [consultation.patient_id, consultation.doctor_id, DEFAULT_HOSPITAL_ID, consultation.token_id, diagnosis, notes, followUpDate]);
+    `, [consultation.patient_id, consultation.doctor_id, hospitalId, consultation.token_id, diagnosis, notes, followUpDate]);
 
     // 5. Create Prescription if provided
     if (prescriptionItems && prescriptionItems.length > 0) {
@@ -676,7 +819,7 @@ app.patch('/api/consultations/:id/complete', requireRole(['DOCTOR']), async (req
       INSERT INTO bills (bill_number, patient_id, hospital_id, token_id, consultation_id, subtotal, total_amount, status, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $6, 'PENDING', $7)
       RETURNING id
-    `, [billNum, consultation.patient_id, DEFAULT_HOSPITAL_ID, consultation.token_id, consultation.id, billAmount, req.user.id]);
+    `, [billNum, consultation.patient_id, hospitalId, consultation.token_id, consultation.id, billAmount, req.user.id]);
     const billId = billRes.rows[0].id;
 
     // Create Bill Item
@@ -691,6 +834,39 @@ app.patch('/api/consultations/:id/complete', requireRole(['DOCTOR']), async (req
     await client.query('COMMIT');
     res.json({ success: true, message: 'Consultation finalized successfully' });
     broadcastQueueUpdate();
+
+    // Trigger email alert
+    try {
+      const emailQuery = await db.query(`
+        SELECT t.*, u.email, u.first_name || ' ' || u.last_name AS patient_name,
+               h.name AS hospital_name,
+               u_doc.first_name || ' ' || u_doc.last_name AS doctor_name,
+               dept.name AS department_name
+        FROM tokens t
+        JOIN patients p ON t.patient_id = p.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN hospitals h ON t.hospital_id = h.id
+        LEFT JOIN doctors d ON t.doctor_id = d.id
+        LEFT JOIN users u_doc ON d.user_id = u_doc.id
+        LEFT JOIN departments dept ON t.department_id = dept.id
+        WHERE t.id = $1
+      `, [consultation.token_id]);
+
+      if (emailQuery.rows.length > 0) {
+        const fullToken = emailQuery.rows[0];
+        if (fullToken.email) {
+          const mailService = require('./mailService');
+          mailService.sendConsultationAlert(
+            fullToken.email,
+            fullToken.patient_name,
+            fullToken,
+            { diagnosis, prescription: notes, billAmount }
+          ).catch(err => console.error('Error sending consultation completed email:', err));
+        }
+      }
+    } catch (emailErr) {
+      console.error('Failed to prepare consultation completed email:', emailErr);
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
@@ -759,6 +935,41 @@ app.post('/api/payments', requireRole(['RECEPTIONIST', 'ADMIN']), async (req, re
     await client.query('COMMIT');
     res.json({ success: true, message: 'Payment recorded successfully' });
     broadcastQueueUpdate();
+
+    // Trigger email alert
+    if (bill.token_id) {
+      try {
+        const emailQuery = await db.query(`
+          SELECT t.*, u.email, u.first_name || ' ' || u.last_name AS patient_name,
+                 h.name AS hospital_name,
+                 u_doc.first_name || ' ' || u_doc.last_name AS doctor_name,
+                 dept.name AS department_name
+          FROM tokens t
+          JOIN patients p ON t.patient_id = p.id
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN hospitals h ON t.hospital_id = h.id
+          LEFT JOIN doctors d ON t.doctor_id = d.id
+          LEFT JOIN users u_doc ON d.user_id = u_doc.id
+          LEFT JOIN departments dept ON t.department_id = dept.id
+          WHERE t.id = $1
+        `, [bill.token_id]);
+
+        if (emailQuery.rows.length > 0) {
+          const fullToken = emailQuery.rows[0];
+          if (fullToken.email) {
+            const mailService = require('./mailService');
+            mailService.sendPaymentAlert(
+              fullToken.email,
+              fullToken.patient_name,
+              fullToken,
+              { amount, method: paymentMethod || 'CASH', transactionId: transactionId || ('TXN-' + Date.now()) }
+            ).catch(err => console.error('Error sending payment confirmation email:', err));
+          }
+        }
+      } catch (emailErr) {
+        console.error('Failed to prepare payment confirmation email:', emailErr);
+      }
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
@@ -795,10 +1006,10 @@ app.patch('/api/notifications/:id/read', requireRole([]), async (req, res) => {
 // BACKWARD COMPATIBILITY ENDPOINTS (SUPPORTING ANDROID ROOM CLIENT)
 // ----------------------------------------------------
 
-// 1. Fetch Departments (Flat format matching DeptEntity)
+// 1. Fetch Departments (CamelCase mapping)
 app.get('/api/departments', async (req, res) => {
   try {
-    const { rows } = await db.query('SELECT id, name, description FROM departments ORDER BY name ASC');
+    const { rows } = await db.query('SELECT id, hospital_id, name, description FROM departments ORDER BY name ASC');
     const mapped = rows.map(r => {
       let icon = 'medical_services';
       if (r.name.includes('Cardiology')) icon = 'favorite';
@@ -808,7 +1019,8 @@ app.get('/api/departments', async (req, res) => {
         id: r.id,
         name: r.name,
         description: r.description || '',
-        iconName: icon
+        iconName: icon,
+        hospitalId: r.hospital_id
       };
     });
     res.json(mapped);
@@ -822,7 +1034,7 @@ app.get('/api/departments', async (req, res) => {
 app.get('/api/doctors', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT d.id, u.first_name || ' ' || u.last_name AS name, d.specialization AS specialty, d.department_id, dept.name AS department_name, d.is_available, d.experience_years
+      SELECT d.id, u.first_name || ' ' || u.last_name AS name, d.specialization AS specialty, d.department_id, dept.name AS department_name, d.is_available, d.experience_years, d.hospital_id
       FROM doctors d
       JOIN users u ON d.user_id = u.id
       JOIN departments dept ON d.department_id = dept.id
@@ -835,7 +1047,8 @@ app.get('/api/doctors', async (req, res) => {
       departmentName: r.department_name,
       rating: 4.8,
       averageServiceTimeMinutes: r.experience_years || 15,
-      isAvailable: r.is_available
+      isAvailable: r.is_available,
+      hospitalId: r.hospital_id
     }));
     res.json(mapped);
   } catch (err) {
@@ -870,13 +1083,14 @@ app.patch('/api/doctors/:id/availability', async (req, res) => {
 app.get('/api/tokens', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT t.id, t.serial_id, t.token_number, u.first_name || ' ' || u.last_name AS patient_name, u.phone AS patient_phone, t.doctor_id, doc_u.first_name || ' ' || doc_u.last_name AS doctor_name, dept.name AS department_name, t.status, t.symptoms, c.diagnosis, p.instructions AS prescription, b.total_amount AS bill_amount, b.status AS payment_status, q.position AS queue_position, t.estimated_wait_minutes, EXTRACT(EPOCH FROM t.created_at) * 1000 AS created_at
+      SELECT t.id, t.serial_id, t.token_number, u.first_name || ' ' || u.last_name AS patient_name, u.phone AS patient_phone, t.doctor_id, doc_u.first_name || ' ' || doc_u.last_name AS doctor_name, dept.name AS department_name, t.status, t.symptoms, c.diagnosis, p.instructions AS prescription, b.total_amount AS bill_amount, b.status AS payment_status, q.position AS queue_position, t.estimated_wait_minutes, EXTRACT(EPOCH FROM t.created_at) * 1000 AS created_at, h.name AS hospital_name
       FROM tokens t
       JOIN patients pat ON t.patient_id = pat.id
       JOIN users u ON pat.user_id = u.id
       JOIN doctors doc ON t.doctor_id = doc.id
       JOIN users doc_u ON doc.user_id = doc_u.id
       JOIN departments dept ON t.department_id = dept.id
+      JOIN hospitals h ON t.hospital_id = h.id
       LEFT JOIN queue_entries q ON t.id = q.token_id AND q.status != 'COMPLETED'
       LEFT JOIN consultations c ON t.id = c.token_id
       LEFT JOIN prescriptions p ON c.id = p.consultation_id
@@ -900,7 +1114,8 @@ app.get('/api/tokens', async (req, res) => {
       paymentStatus: r.payment_status === 'PAID' ? 'PAID' : 'PENDING',
       queuePosition: r.queue_position || 1,
       estimatedWaitMinutes: r.estimated_wait_minutes || 0,
-      createdAt: parseInt(r.created_at, 10)
+      createdAt: parseInt(r.created_at, 10),
+      hospitalName: r.hospital_name || 'City Care Hospital'
     }));
 
     res.json(mapped);
@@ -956,14 +1171,22 @@ app.post('/api/tokens/request', async (req, res) => {
     } else {
       patientUserId = userCheck.rows[0].id;
       const patRes = await client.query('SELECT id FROM patients WHERE user_id = $1', [patientUserId]);
-      patientId = patRes.rows[0].id;
+      if (patRes.rows.length === 0) {
+        patientId = crypto.randomUUID();
+        await client.query(`
+          INSERT INTO patients (id, user_id, patient_number, date_of_birth, gender)
+          VALUES ($1, $2, $3, '1990-01-01', 'MALE')
+        `, [patientId, patientUserId, `PAT-${patientPhone}`]);
+      } else {
+        patientId = patRes.rows[0].id;
+      }
     }
 
-    // 3. Count active doctor tokens for token number prefix
-    const activeRes = await client.query("SELECT COUNT(*) FROM tokens WHERE doctor_id = $1 AND queue_date = CURRENT_DATE AND status IN ('APPROVED', 'WAITING', 'CALLED', 'SERVING')", [doctorId]);
+    // 3. Count active doctor tokens for token number prefix (count all tokens to ensure unique token numbers)
+    const activeRes = await client.query("SELECT COUNT(*) FROM tokens WHERE doctor_id = $1 AND queue_date = CURRENT_DATE", [doctorId]);
     const queueCount = parseInt(activeRes.rows[0].count, 10);
 
-    const prefix = doctor.specialty.substring(0, 3).toUpperCase();
+    const prefix = (doctor.specialization || doctor.specialty || 'GEN').substring(0, 3).toUpperCase();
     const tokenNum = `#${prefix}-${101 + queueCount}`;
     const estWait = queueCount * doctor.experience_years;
     const initialStatus = isWalkIn ? 'APPROVED' : 'PENDING';
@@ -976,7 +1199,7 @@ app.post('/api/tokens/request', async (req, res) => {
     `, [
       tokenNum,
       patientId,
-      DEFAULT_HOSPITAL_ID,
+      doctor.hospital_id,
       doctor.department_id,
       doctorId,
       initialStatus,
@@ -1005,6 +1228,36 @@ app.post('/api/tokens/request', async (req, res) => {
     await client.query('COMMIT');
     res.json({ success: true, tokenId: newSerialId, tokenNumber: tokenNum });
     broadcastQueueUpdate();
+
+    // Trigger email alert
+    try {
+      const emailQuery = await db.query(`
+        SELECT t.*, u.email, u.first_name || ' ' || u.last_name AS patient_name,
+               h.name AS hospital_name,
+               u_doc.first_name || ' ' || u_doc.last_name AS doctor_name,
+               dept.name AS department_name
+        FROM tokens t
+        JOIN patients p ON t.patient_id = p.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN hospitals h ON t.hospital_id = h.id
+        LEFT JOIN doctors d ON t.doctor_id = d.id
+        LEFT JOIN users u_doc ON d.user_id = u_doc.id
+        LEFT JOIN departments dept ON t.department_id = dept.id
+        WHERE t.serial_id = $1
+      `, [newSerialId]);
+
+      if (emailQuery.rows.length > 0) {
+        const fullToken = emailQuery.rows[0];
+        if (fullToken.email) {
+          const mailService = require('./mailService');
+          mailService.sendTokenCreatedAlert(fullToken.email, fullToken.patient_name, fullToken).catch(err => {
+            console.error('Error sending token creation email alert:', err);
+          });
+        }
+      }
+    } catch (emailErr) {
+      console.error('Failed to prepare token creation email alert:', emailErr);
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
@@ -1074,6 +1327,36 @@ app.patch('/api/tokens/:id/status', async (req, res) => {
     await client.query('COMMIT');
     res.json({ success: true });
     broadcastQueueUpdate();
+
+    // Trigger email alert
+    try {
+      const emailQuery = await db.query(`
+        SELECT t.*, u.email, u.first_name || ' ' || u.last_name AS patient_name,
+               h.name AS hospital_name,
+               u_doc.first_name || ' ' || u_doc.last_name AS doctor_name,
+               dept.name AS department_name
+        FROM tokens t
+        JOIN patients p ON t.patient_id = p.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN hospitals h ON t.hospital_id = h.id
+        LEFT JOIN doctors d ON t.doctor_id = d.id
+        LEFT JOIN users u_doc ON d.user_id = u_doc.id
+        LEFT JOIN departments dept ON t.department_id = dept.id
+        WHERE t.serial_id = $1
+      `, [id]);
+
+      if (emailQuery.rows.length > 0) {
+        const fullToken = emailQuery.rows[0];
+        if (fullToken.email && oldStatus !== status) {
+          const mailService = require('./mailService');
+          mailService.sendTokenStatusAlert(fullToken.email, fullToken.patient_name, fullToken, oldStatus, status).catch(err => {
+            console.error('Error sending token status email alert:', err);
+          });
+        }
+      }
+    } catch (emailErr) {
+      console.error('Failed to prepare token status email alert:', emailErr);
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
@@ -1124,7 +1407,7 @@ app.post('/api/tokens/:id/consultation', async (req, res) => {
     await client.query(`
       INSERT INTO medical_records (patient_id, doctor_id, hospital_id, token_id, diagnosis, clinical_notes)
       VALUES ($1, $2, $3, $4, $5, $6)
-    `, [token.patient_id, token.doctor_id, DEFAULT_HOSPITAL_ID, token.id, diagnosis, prescription]);
+    `, [token.patient_id, token.doctor_id, token.hospital_id, token.id, diagnosis, prescription]);
 
     // 4. Create Prescription Record
     const rxNumber = `RX-${Date.now()}`;
@@ -1146,7 +1429,7 @@ app.post('/api/tokens/:id/consultation', async (req, res) => {
       INSERT INTO bills (bill_number, patient_id, hospital_id, token_id, consultation_id, subtotal, total_amount, status, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $6, 'PENDING', $7)
       RETURNING id
-    `, [billNum, token.patient_id, DEFAULT_HOSPITAL_ID, token.id, consultation.id, billAmount, DEFAULT_RECP_USER_ID]);
+    `, [billNum, token.patient_id, token.hospital_id, token.id, consultation.id, billAmount, DEFAULT_RECP_USER_ID]);
 
     await client.query(`
       INSERT INTO bill_items (bill_id, item_type, description, quantity, unit_price, total_price)
@@ -1161,6 +1444,39 @@ app.post('/api/tokens/:id/consultation', async (req, res) => {
     await client.query('COMMIT');
     res.json({ success: true });
     broadcastQueueUpdate();
+
+    // Trigger email alert
+    try {
+      const emailQuery = await db.query(`
+        SELECT t.*, u.email, u.first_name || ' ' || u.last_name AS patient_name,
+               h.name AS hospital_name,
+               u_doc.first_name || ' ' || u_doc.last_name AS doctor_name,
+               dept.name AS department_name
+        FROM tokens t
+        JOIN patients p ON t.patient_id = p.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN hospitals h ON t.hospital_id = h.id
+        LEFT JOIN doctors d ON t.doctor_id = d.id
+        LEFT JOIN users u_doc ON d.user_id = u_doc.id
+        LEFT JOIN departments dept ON t.department_id = dept.id
+        WHERE t.serial_id = $1
+      `, [id]);
+
+      if (emailQuery.rows.length > 0) {
+        const fullToken = emailQuery.rows[0];
+        if (fullToken.email) {
+          const mailService = require('./mailService');
+          mailService.sendConsultationAlert(
+            fullToken.email,
+            fullToken.patient_name,
+            fullToken,
+            { diagnosis, prescription, billAmount }
+          ).catch(err => console.error('Error sending compatibility consultation email:', err));
+        }
+      }
+    } catch (emailErr) {
+      console.error('Failed to prepare compatibility consultation email:', emailErr);
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
@@ -1205,6 +1521,41 @@ app.post('/api/tokens/:id/payment', async (req, res) => {
     await client.query('COMMIT');
     res.json({ success: true });
     broadcastQueueUpdate();
+
+    // Trigger email alert
+    try {
+      const emailQuery = await db.query(`
+        SELECT t.*, u.email, u.first_name || ' ' || u.last_name AS patient_name,
+               h.name AS hospital_name,
+               u_doc.first_name || ' ' || u_doc.last_name AS doctor_name,
+               dept.name AS department_name,
+               b.total_amount
+        FROM tokens t
+        JOIN patients p ON t.patient_id = p.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN hospitals h ON t.hospital_id = h.id
+        LEFT JOIN doctors d ON t.doctor_id = d.id
+        LEFT JOIN users u_doc ON d.user_id = u_doc.id
+        LEFT JOIN departments dept ON t.department_id = dept.id
+        LEFT JOIN bills b ON t.id = b.token_id
+        WHERE t.serial_id = $1
+      `, [id]);
+
+      if (emailQuery.rows.length > 0) {
+        const fullToken = emailQuery.rows[0];
+        if (fullToken.email) {
+          const mailService = require('./mailService');
+          mailService.sendPaymentAlert(
+            fullToken.email,
+            fullToken.patient_name,
+            fullToken,
+            { amount: fullToken.total_amount || 0, method: 'CASH', transactionId: 'TXN-' + Date.now() }
+          ).catch(err => console.error('Error sending compatibility payment email:', err));
+        }
+      }
+    } catch (emailErr) {
+      console.error('Failed to prepare compatibility payment email:', emailErr);
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);

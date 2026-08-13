@@ -7,6 +7,7 @@ import com.eto.manager.data.local.AppDatabase
 import com.eto.manager.data.repository.EtoRepositoryImpl
 import com.eto.manager.domain.model.Department
 import com.eto.manager.domain.model.Doctor
+import com.eto.manager.domain.model.Hospital
 import com.eto.manager.domain.model.PaymentStatus
 import com.eto.manager.domain.model.Token
 import com.eto.manager.domain.model.TokenStatus
@@ -71,6 +72,9 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
     private val _isProfileLoading = MutableStateFlow(false)
     val isProfileLoading = _isProfileLoading.asStateFlow()
 
+    private val _labReports = MutableStateFlow<List<com.eto.manager.data.remote.LabReportResponse>>(emptyList())
+    val labReports = _labReports.asStateFlow()
+
     fun fetchUserProfile(role: UserRole) {
         viewModelScope.launch {
             _isProfileLoading.value = true
@@ -111,6 +115,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
     // Room DB streams
     val doctors: StateFlow<List<Doctor>>
     val departments: StateFlow<List<Department>>
+    val hospitals: StateFlow<List<Hospital>>
     val tokens: StateFlow<List<Token>>
 
     init {
@@ -118,7 +123,8 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
         repository = EtoRepositoryImpl(
             db.doctorDao(),
             db.departmentDao(),
-            db.tokenDao()
+            db.tokenDao(),
+            db.hospitalDao()
         )
 
         // Seed initial data immediately
@@ -130,6 +136,9 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
             viewModelScope, SharingStarted.Lazily, emptyList()
         )
         departments = repository.getDepartments().stateIn(
+            viewModelScope, SharingStarted.Lazily, emptyList()
+        )
+        hospitals = repository.getHospitals().stateIn(
             viewModelScope, SharingStarted.Lazily, emptyList()
         )
         tokens = repository.getTokens().stateIn(
@@ -150,12 +159,70 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
+        viewModelScope.launch {
+            var previousTokensList: List<Token>? = null
+            tokens.collect { currentTokensList ->
+                if (_currentRole.value == UserRole.RECEPTIONIST && previousTokensList != null) {
+                    val newPending = currentTokensList.filter { it.status == TokenStatus.PENDING }
+                        .filter { token -> previousTokensList!!.none { it.id == token.id } }
+                    for (token in newPending) {
+                        addNotification(
+                            title = "New Appointment Request",
+                            message = "Patient ${token.patientName} requested an appointment for ${token.doctorName}.",
+                            type = "IN_APP"
+                        )
+                    }
+                }
+                previousTokensList = currentTokensList
+            }
+        }
+
         // Start background queue progression loop
         startSimulation()
     }
 
     fun setRole(role: UserRole) {
         _currentRole.value = role
+        fetchUserProfile(role)
+        viewModelScope.launch {
+            repository.refreshData()
+        }
+    }
+
+    fun fetchLabReports(phone: String) {
+        viewModelScope.launch {
+            _labReports.value = repository.getLabReports(phone)
+        }
+    }
+
+    fun updatePatientProfile(
+        firstName: String,
+        lastName: String,
+        email: String,
+        newPhone: String,
+        dateOfBirth: String,
+        gender: String,
+        bloodGroup: String
+    ) {
+        viewModelScope.launch {
+            val params = mapOf(
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "email" to email,
+                "phone" to newPhone,
+                "dateOfBirth" to dateOfBirth,
+                "gender" to gender,
+                "bloodGroup" to bloodGroup
+            )
+            val success = repository.updatePatientProfile(patientPhone.value, params)
+            if (success) {
+                patientName.value = "$firstName $lastName".trim()
+                if (newPhone.isNotBlank() && newPhone != patientPhone.value) {
+                    patientPhone.value = newPhone
+                }
+                fetchUserProfile(UserRole.PATIENT)
+            }
+        }
     }
 
     fun selectDoctor(doctorId: String?) {

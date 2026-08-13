@@ -8,7 +8,8 @@ data class Doctor(
     val departmentName: String,
     val rating: Float,
     val averageServiceTimeMinutes: Int,
-    val isAvailable: Boolean
+    val isAvailable: Boolean,
+    val hospitalId: String
 )
 
 data class Department(
@@ -16,6 +17,19 @@ data class Department(
     val name: String,
     val description: String,
     val iconName: String
+)
+
+data class Hospital(
+    val id: String,
+    val name: String,
+    val registrationNumber: String,
+    val description: String?,
+    val phone: String?,
+    val email: String?,
+    val city: String?,
+    val state: String?,
+    val latitude: Double,
+    val longitude: Double
 )
 
 data class Token(
@@ -34,7 +48,8 @@ data class Token(
     val diagnosis: String? = null,
     val prescription: String? = null,
     val billAmount: Double = 0.0,
-    val paymentStatus: PaymentStatus = PaymentStatus.PENDING
+    val paymentStatus: PaymentStatus = PaymentStatus.PENDING,
+    val hospitalName: String
 )
 
 enum class TokenStatus {

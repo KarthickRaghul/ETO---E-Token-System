@@ -3,6 +3,7 @@ package com.eto.manager.data.remote
 import com.eto.manager.data.local.entity.DepartmentEntity
 import com.eto.manager.data.local.entity.DoctorEntity
 import com.eto.manager.data.local.entity.TokenEntity
+import com.eto.manager.data.local.entity.HospitalEntity
 import retrofit2.http.*
 
 interface ApiService {
@@ -12,6 +13,9 @@ interface ApiService {
 
     @GET("api/doctors")
     suspend fun getDoctors(): List<DoctorEntity>
+
+    @GET("api/hospitals")
+    suspend fun getHospitals(): List<HospitalEntity>
 
     @PATCH("api/doctors/{id}/availability")
     suspend fun updateDoctorAvailability(
@@ -50,12 +54,28 @@ interface ApiService {
     @GET("api/profile/patient/{phone}")
     suspend fun getPatientProfile(@Path("phone") phone: String): PatientProfileResponse
 
+    @PUT("api/profile/patient/{phone}")
+    suspend fun updatePatientProfile(
+        @Path("phone") phone: String,
+        @Body body: Map<String, String>
+    ): Map<String, Any>
+
+    @GET("api/patients/{phone}/lab-reports")
+    suspend fun getLabReports(@Path("phone") phone: String): List<LabReportResponse>
+
     @GET("api/profile/doctor/{id}")
     suspend fun getDoctorProfile(@Path("id") doctorId: String): DoctorProfileResponse
 
     @GET("api/profile/receptionist/{phoneOrId}")
     suspend fun getReceptionistProfile(@Path("phoneOrId") phoneOrId: String): ReceptionistProfileResponse
 }
+
+data class LabReportResponse(
+    val id: Int,
+    val name: String,
+    val date: String,
+    val status: String
+)
 
 data class PatientProfileResponse(
     val id: String,

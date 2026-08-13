@@ -63,3 +63,238 @@
 2026-08-10 15:00:56.745 IST [107471] LOG:  checkpoint starting: shutdown immediate
 2026-08-10 15:00:57.328 IST [107471] LOG:  checkpoint complete: wrote 559 buffers (3.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=0.025 s, sync=0.511 s, total=0.592 s; sync files=817, longest=0.004 s, average=0.001 s; distance=10401 kB, estimate=10401 kB; lsn=0/26E8D38, redo lsn=0/26E8D38
 2026-08-10 15:00:57.344 IST [107467] LOG:  database system is shut down
+2026-08-13 11:59:36.870 IST [107866] LOG:  starting PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-08-13 11:59:36.870 IST [107866] LOG:  listening on IPv6 address "::1", port 5432
+2026-08-13 11:59:36.870 IST [107866] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2026-08-13 11:59:36.875 IST [107866] FATAL:  could not create lock file "/run/postgresql/.s.PGSQL.5432.lock": No such file or directory
+2026-08-13 11:59:36.875 IST [107866] LOG:  database system is shut down
+2026-08-13 11:59:50.485 IST [107933] LOG:  starting PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-08-13 11:59:50.486 IST [107933] LOG:  listening on IPv6 address "::1", port 5432
+2026-08-13 11:59:50.486 IST [107933] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2026-08-13 11:59:50.494 IST [107933] LOG:  listening on Unix socket "/home/karthi/Projects/Eto/server/.s.PGSQL.5432"
+2026-08-13 11:59:50.504 IST [107943] LOG:  database system was shut down at 2026-08-11 14:59:41 IST
+2026-08-13 11:59:50.512 IST [107933] LOG:  database system is ready to accept connections
+2026-08-13 11:59:50.535 IST [107933] LOG:  received SIGHUP, reloading configuration files
+2026-08-13 12:45:19.925 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 12:45:34.888 IST [107941] LOG:  checkpoint complete: wrote 148 buffers (0.9%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=14.842 s, sync=0.097 s, total=14.964 s; sync files=148, longest=0.005 s, average=0.001 s; distance=386 kB, estimate=386 kB; lsn=0/2922368, redo lsn=0/29222D8
+2026-08-13 12:50:19.988 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 12:50:21.003 IST [107941] LOG:  checkpoint complete: wrote 9 buffers (0.1%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.911 s, sync=0.050 s, total=1.015 s; sync files=9, longest=0.045 s, average=0.006 s; distance=32 kB, estimate=350 kB; lsn=0/292A6C0, redo lsn=0/292A668
+2026-08-13 12:55:19.103 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 12:55:23.077 IST [107941] LOG:  checkpoint complete: wrote 39 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=3.922 s, sync=0.028 s, total=3.975 s; sync files=37, longest=0.006 s, average=0.001 s; distance=41 kB, estimate=319 kB; lsn=0/2934D10, redo lsn=0/2934CB8
+2026-08-13 13:00:19.178 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 13:00:23.023 IST [107941] LOG:  checkpoint complete: wrote 37 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=3.717 s, sync=0.066 s, total=3.846 s; sync files=38, longest=0.039 s, average=0.002 s; distance=51 kB, estimate=292 kB; lsn=0/2941920, redo lsn=0/29418C8
+2026-08-13 13:05:19.049 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 13:05:22.630 IST [107941] LOG:  checkpoint complete: wrote 35 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=3.525 s, sync=0.029 s, total=3.581 s; sync files=36, longest=0.008 s, average=0.001 s; distance=49 kB, estimate=268 kB; lsn=0/294DE58, redo lsn=0/294DE00
+2026-08-13 13:10:19.730 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 13:10:23.539 IST [107941] LOG:  checkpoint complete: wrote 37 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=3.724 s, sync=0.031 s, total=3.809 s; sync files=38, longest=0.008 s, average=0.001 s; distance=49 kB, estimate=246 kB; lsn=0/295A628, redo lsn=0/295A5D0
+2026-08-13 13:15:19.639 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 13:15:23.473 IST [107941] LOG:  checkpoint complete: wrote 37 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=3.719 s, sync=0.094 s, total=3.835 s; sync files=38, longest=0.064 s, average=0.003 s; distance=65 kB, estimate=228 kB; lsn=0/296ACE8, redo lsn=0/296AC90
+2026-08-13 13:20:20.356 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 13:20:24.978 IST [107941] LOG:  checkpoint complete: wrote 44 buffers (0.3%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=4.426 s, sync=0.149 s, total=4.622 s; sync files=42, longest=0.124 s, average=0.004 s; distance=104 kB, estimate=216 kB; lsn=0/2984E90, redo lsn=0/2984E38
+2026-08-13 13:32:27.013 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 13:32:27.959 IST [107941] LOG:  checkpoint complete: wrote 9 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.912 s, sync=0.012 s, total=0.946 s; sync files=10, longest=0.005 s, average=0.002 s; distance=20 kB, estimate=196 kB; lsn=0/2989EE8, redo lsn=0/2989E90
+2026-08-13 17:53:54.416 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 17:53:55.150 IST [107941] LOG:  checkpoint complete: wrote 6 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.612 s, sync=0.010 s, total=0.735 s; sync files=7, longest=0.005 s, average=0.002 s; distance=8 kB, estimate=177 kB; lsn=0/298C110, redo lsn=0/298C0B8
+2026-08-13 17:54:14.252 IST [131808] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 17:54:14.252 IST [131808] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 17:54:14.252 IST [131808] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 17:58:54.249 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 17:58:54.888 IST [107941] LOG:  checkpoint complete: wrote 6 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.606 s, sync=0.009 s, total=0.639 s; sync files=7, longest=0.005 s, average=0.002 s; distance=13 kB, estimate=161 kB; lsn=0/298F768, redo lsn=0/298F710
+2026-08-13 17:59:04.104 IST [134222] ERROR:  duplicate key value violates unique constraint "tokens_serial_id_key"
+2026-08-13 17:59:04.104 IST [134222] DETAIL:  Key (serial_id)=(1) already exists.
+2026-08-13 17:59:04.104 IST [134222] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 17:59:40.129 IST [134222] ERROR:  duplicate key value violates unique constraint "tokens_serial_id_key"
+2026-08-13 17:59:40.129 IST [134222] DETAIL:  Key (serial_id)=(2) already exists.
+2026-08-13 17:59:40.129 IST [134222] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:03:54.987 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:03:59.582 IST [107941] LOG:  checkpoint complete: wrote 44 buffers (0.3%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=4.419 s, sync=0.078 s, total=4.595 s; sync files=45, longest=0.051 s, average=0.002 s; distance=85 kB, estimate=153 kB; lsn=0/29A4DB0, redo lsn=0/29A4D58
+2026-08-13 18:04:28.746 IST [136292] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:04:28.746 IST [136292] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890cd, d2222222-2222-2222-2222-222222222222, 2026-08-13, #PED-101) already exists.
+2026-08-13 18:04:28.746 IST [136292] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:05:41.088 IST [136292] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:05:41.088 IST [136292] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890ab, d5555555-5555-5555-5555-555555555555, 2026-08-13, #ORT-102) already exists.
+2026-08-13 18:05:41.088 IST [136292] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:06:51.471 IST [136984] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:06:51.471 IST [136984] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890cd, d3333333-3333-3333-3333-333333333333, 2026-08-13, #DER-101) already exists.
+2026-08-13 18:06:51.471 IST [136984] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:07:24.178 IST [136984] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:07:24.178 IST [136984] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890ab, d5555555-5555-5555-5555-555555555555, 2026-08-13, #ORT-102) already exists.
+2026-08-13 18:07:24.178 IST [136984] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:07:38.425 IST [136984] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:07:38.425 IST [136984] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890cd, d3333333-3333-3333-3333-333333333333, 2026-08-13, #DER-102) already exists.
+2026-08-13 18:07:38.425 IST [136984] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:07:51.603 IST [136984] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:07:51.603 IST [136984] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890cd, d2222222-2222-2222-2222-222222222222, 2026-08-13, #PED-101) already exists.
+2026-08-13 18:07:51.603 IST [136984] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:08:08.379 IST [136984] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:08:08.379 IST [136984] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:08:08.379 IST [136984] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:08:54.671 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:09:01.452 IST [107941] LOG:  checkpoint complete: wrote 66 buffers (0.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=6.678 s, sync=0.077 s, total=6.782 s; sync files=49, longest=0.047 s, average=0.002 s; distance=235 kB, estimate=235 kB; lsn=0/29DFD30, redo lsn=0/29DFCA0
+2026-08-13 18:09:03.834 IST [137947] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:09:03.834 IST [137947] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890cd, d2222222-2222-2222-2222-222222222222, 2026-08-13, #PED-101) already exists.
+2026-08-13 18:09:03.834 IST [137947] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:09:21.230 IST [138164] FATAL:  role "postgres" does not exist
+2026-08-13 18:09:35.821 IST [138152] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:09:35.821 IST [138152] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890ab, d1111111-1111-1111-1111-111111111111, 2026-08-13, #CAR-101) already exists.
+2026-08-13 18:09:35.821 IST [138152] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:09:43.263 IST [138152] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:09:43.263 IST [138152] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:09:43.263 IST [138152] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:09:45.103 IST [138302] ERROR:  duplicate key value violates unique constraint "unique_doctor_date_token"
+2026-08-13 18:09:45.103 IST [138302] DETAIL:  Key (hospital_id, doctor_id, queue_date, token_number)=(e4b77f98-5c1a-4fdf-9737-1234567890cd, d2222222-2222-2222-2222-222222222222, 2026-08-13, #PED-101) already exists.
+2026-08-13 18:09:45.103 IST [138302] STATEMENT:  
+	      INSERT INTO tokens (token_number, patient_id, hospital_id, department_id, doctor_id, queue_date, status, estimated_wait_minutes, created_by, source, symptoms)
+	      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10)
+	      RETURNING serial_id
+	    
+2026-08-13 18:10:06.713 IST [138435] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:10:06.713 IST [138435] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:10:06.713 IST [138435] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:13:54.552 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:13:59.608 IST [107941] LOG:  checkpoint complete: wrote 49 buffers (0.3%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=4.918 s, sync=0.111 s, total=5.056 s; sync files=47, longest=0.083 s, average=0.003 s; distance=164 kB, estimate=228 kB; lsn=0/2A09008, redo lsn=0/2A08FB0
+2026-08-13 18:17:02.130 IST [140539] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:17:02.130 IST [140539] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:17:02.130 IST [140539] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:18:54.618 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:19:00.479 IST [107941] LOG:  checkpoint complete: wrote 56 buffers (0.3%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=5.624 s, sync=0.210 s, total=5.861 s; sync files=36, longest=0.108 s, average=0.006 s; distance=271 kB, estimate=271 kB; lsn=0/2A591A0, redo lsn=0/2A4CCD8
+2026-08-13 18:21:45.920 IST [141663] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:21:45.920 IST [141663] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:21:45.920 IST [141663] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:22:11.783 IST [141619] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:22:11.783 IST [141619] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:22:11.783 IST [141619] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:23:23.171 IST [142178] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:23:23.171 IST [142178] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:23:23.171 IST [142178] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:23:41.037 IST [142281] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:23:41.037 IST [142281] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:23:41.037 IST [142281] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:23:54.578 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:23:59.401 IST [107941] LOG:  checkpoint complete: wrote 47 buffers (0.3%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=4.727 s, sync=0.072 s, total=4.823 s; sync files=44, longest=0.047 s, average=0.002 s; distance=168 kB, estimate=260 kB; lsn=0/2A76E58, redo lsn=0/2A76E00
+2026-08-13 18:24:05.782 IST [142453] ERROR:  column "patient_name" does not exist at character 26
+2026-08-13 18:24:05.782 IST [142453] STATEMENT:  SELECT id, token_number, patient_name, doctor_id, status FROM tokens;
+2026-08-13 18:24:45.859 IST [142718] ERROR:  column "name" does not exist at character 12
+2026-08-13 18:24:45.859 IST [142718] STATEMENT:  SELECT id, name FROM doctors;
+2026-08-13 18:28:38.914 IST [143906] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:28:38.914 IST [143906] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:28:38.914 IST [143906] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-13 18:28:54.472 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:29:00.357 IST [107941] LOG:  checkpoint complete: wrote 58 buffers (0.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=5.828 s, sync=0.035 s, total=5.885 s; sync files=45, longest=0.008 s, average=0.001 s; distance=260 kB, estimate=260 kB; lsn=0/2AB7EF8, redo lsn=0/2AB7E68
+2026-08-13 18:33:05.886 IST [145283] ERROR:  column t.patient_name does not exist at character 30
+2026-08-13 18:33:05.886 IST [145283] STATEMENT:  SELECT t.id, t.token_number, t.patient_name, t.doctor_id, u.first_name || ' ' || u.last_name AS doc_name FROM tokens t JOIN doctors d ON t.doctor_id = d.id JOIN users u ON d.user_id = u.id WHERE t.token_number = 'CAR-110';
+2026-08-13 18:33:54.412 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:33:59.832 IST [107941] LOG:  checkpoint complete: wrote 53 buffers (0.3%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=5.327 s, sync=0.040 s, total=5.421 s; sync files=46, longest=0.009 s, average=0.001 s; distance=245 kB, estimate=259 kB; lsn=0/2AF54D8, redo lsn=0/2AF5480
+2026-08-13 18:38:54.904 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:38:59.615 IST [107941] LOG:  checkpoint complete: wrote 46 buffers (0.3%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=4.622 s, sync=0.037 s, total=4.712 s; sync files=43, longest=0.012 s, average=0.001 s; distance=205 kB, estimate=253 kB; lsn=0/2B289E0, redo lsn=0/2B28988
+2026-08-13 18:43:54.716 IST [107941] LOG:  checkpoint starting: time
+2026-08-13 18:44:01.203 IST [107941] LOG:  checkpoint complete: wrote 64 buffers (0.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=6.425 s, sync=0.035 s, total=6.488 s; sync files=49, longest=0.007 s, average=0.001 s; distance=297 kB, estimate=297 kB; lsn=0/2B7F178, redo lsn=0/2B72E90
+2026-08-13 18:44:12.453 IST [150294] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-13 18:44:12.453 IST [150294] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-13 18:44:12.453 IST [150294] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    

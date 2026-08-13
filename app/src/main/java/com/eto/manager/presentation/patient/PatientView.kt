@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.PaddingValues
 import com.eto.manager.presentation.UserRole
 import androidx.compose.runtime.LaunchedEffect
@@ -123,7 +124,7 @@ fun PatientView(
     val departments by viewModel.departments.collectAsState()
     val tokens by viewModel.tokens.collectAsState()
     val selectedDocId by viewModel.selectedDoctorId.collectAsState()
-    val symptoms by viewModel.symptomsInput.collectAsState()
+    val dbHospitals by viewModel.hospitals.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedDeptId by remember { mutableStateOf<String?>(null) }
@@ -134,42 +135,73 @@ fun PatientView(
     var symptomsText by remember { mutableStateOf("") }
     var activeQuickAction by remember { mutableStateOf<String?>(null) }
 
-    val mockHospitalsList = remember {
-        listOf(
-            MockHospitalInfo(
-                id = "h1",
-                name = "City Care Hospital",
-                distanceTime = "1.2 km • 18 min",
-                rating = "4.6",
-                latitude = 13.0827,
-                longitude = 80.2707,
-                specialties = listOf("Cardiology", "General Medicine"),
-                address = "12, Poonamallee High Rd, Chennai",
-                imageRes = R.drawable.hospital_thumbnail
-            ),
-            MockHospitalInfo(
-                id = "h2",
-                name = "Sunrise Clinic",
-                distanceTime = "2.4 km • 24 min",
-                rating = "4.4",
-                latitude = 13.0850,
-                longitude = 80.2800,
-                specialties = listOf("Dermatology", "Pediatrics"),
-                address = "45, Cathedral Rd, Chennai",
-                imageRes = R.drawable.hospital_thumbnail
-            ),
-            MockHospitalInfo(
-                id = "h3",
-                name = "St. Jude Hospital",
-                distanceTime = "3.5 km • 30 min",
-                rating = "4.7",
-                latitude = 13.0780,
-                longitude = 80.2600,
-                specialties = listOf("General Medicine", "Pediatrics"),
-                address = "78, Anna Salai, Chennai",
-                imageRes = R.drawable.hospital_thumbnail
+    val mockHospitalsList = remember(dbHospitals, doctors) {
+        if (dbHospitals.isNotEmpty()) {
+            dbHospitals.mapIndexed { idx, hosp ->
+                val specialties = doctors.filter { it.hospitalId == hosp.id }
+                    .map { it.departmentName }
+                    .distinct()
+                    .ifEmpty { listOf("General Medicine") }
+
+                val dist = when (idx) {
+                    0 -> "1.2 km • 18 min"
+                    1 -> "2.4 km • 24 min"
+                    else -> "${idx + 1.2} km • ${idx * 6 + 18} min"
+                }
+                val rating = when (idx) {
+                    0 -> "4.6"
+                    1 -> "4.4"
+                    else -> "4.5"
+                }
+                MockHospitalInfo(
+                    id = hosp.id,
+                    name = hosp.name,
+                    distanceTime = dist,
+                    rating = rating,
+                    latitude = hosp.latitude,
+                    longitude = hosp.longitude,
+                    specialties = specialties,
+                    address = "${hosp.city ?: "Chennai"}, ${hosp.state ?: "Tamil Nadu"}",
+                    imageRes = R.drawable.hospital_thumbnail
+                )
+            }
+        } else {
+            listOf(
+                MockHospitalInfo(
+                    id = "e4b77f98-5c1a-4fdf-9737-1234567890ab",
+                    name = "City General Hospital & ETO Clinic",
+                    distanceTime = "1.2 km • 18 min",
+                    rating = "4.6",
+                    latitude = 13.0827,
+                    longitude = 80.2707,
+                    specialties = listOf("Cardiology", "General Medicine"),
+                    address = "100 Medical Plaza, Adyar, Chennai",
+                    imageRes = R.drawable.hospital_thumbnail
+                ),
+                MockHospitalInfo(
+                    id = "e4b77f98-5c1a-4fdf-9737-1234567890cd",
+                    name = "St. Mary's Pediatric & Family Health",
+                    distanceTime = "2.4 km • 24 min",
+                    rating = "4.4",
+                    latitude = 13.0472,
+                    longitude = 80.2644,
+                    specialties = listOf("Dermatology", "Pediatrics"),
+                    address = "50 Park Avenue, Mylapore, Chennai",
+                    imageRes = R.drawable.hospital_thumbnail
+                ),
+                MockHospitalInfo(
+                    id = "e4b77f98-5c1a-4fdf-9737-1234567890ef",
+                    name = "Metro Heart & Neurological Institute",
+                    distanceTime = "3.5 km • 30 min",
+                    rating = "4.7",
+                    latitude = 13.0427,
+                    longitude = 80.2407,
+                    specialties = listOf("General Medicine", "Pediatrics"),
+                    address = "12 G.N. Chetty Road, T. Nagar, Chennai",
+                    imageRes = R.drawable.hospital_thumbnail
+                )
             )
-        )
+        }
     }
 
     val queryLower = searchQuery.trim().lowercase()
@@ -467,7 +499,7 @@ fun PatientView(
                                 }
 
                                 val hospitalDoctors = doctors.filter { doc ->
-                                    selectedHospital!!.specialties.contains(doc.departmentName)
+                                    doc.hospitalId == selectedHospital!!.id || selectedHospital!!.specialties.contains(doc.departmentName)
                                 }
 
                                 if (hospitalDoctors.isEmpty()) {
@@ -749,17 +781,34 @@ fun PatientView(
                         }
 
                         item {
-                            // Horizontal scrolling list of mock hospital cards
-                            val mockHospitals = listOf(
-                                MockHospital("City Care Hospital", "1.2 km • 18 min", "4.6", R.drawable.hospital_thumbnail),
-                                MockHospital("Sunrise Clinic", "2.4 km • 24 min", "4.4", R.drawable.hospital_thumbnail),
-                                MockHospital("St. Jude Hospital", "3.5 km • 30 min", "4.7", R.drawable.hospital_thumbnail)
-                            )
+                            // Horizontal scrolling list of hospital cards
+                            val hospitalsList by viewModel.hospitals.collectAsState()
+                            val displayHospitals = if (hospitalsList.isNotEmpty()) {
+                                hospitalsList.mapIndexed { idx, hosp ->
+                                    val dist = when (idx) {
+                                        0 -> "1.2 km • 18 min"
+                                        1 -> "2.4 km • 24 min"
+                                        else -> "${idx + 1.2} km • ${idx * 6 + 18} min"
+                                    }
+                                    val rating = when (idx) {
+                                        0 -> "4.6"
+                                        1 -> "4.4"
+                                        else -> "4.5"
+                                    }
+                                    MockHospital(hosp.name, dist, rating, R.drawable.hospital_thumbnail)
+                                }
+                            } else {
+                                listOf(
+                                    MockHospital("City Care Hospital", "1.2 km • 18 min", "4.6", R.drawable.hospital_thumbnail),
+                                    MockHospital("Sunrise Clinic", "2.4 km • 24 min", "4.4", R.drawable.hospital_thumbnail),
+                                    MockHospital("St. Jude Hospital", "3.5 km • 30 min", "4.7", R.drawable.hospital_thumbnail)
+                                )
+                            }
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                items(mockHospitals) { hospital ->
+                                items(displayHospitals) { hospital ->
                                     NearbyHospitalCard(hospital)
                                 }
                             }
@@ -821,7 +870,7 @@ fun PatientView(
                                             Spacer(modifier = Modifier.width(12.dp))
                                             Column {
                                                 Text(
-                                                    text = "City Care Hospital",
+                                                    text = activeToken.hospitalName,
                                                     fontSize = 14.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = MaterialTheme.colorScheme.onSurface
@@ -857,7 +906,8 @@ fun PatientView(
                                         ActiveAppointmentStat("Token No.", activeToken.tokenNumber, isPrimary = true)
                                         ActiveAppointmentStat("Current Token", servingToken?.tokenNumber ?: "None")
                                         ActiveAppointmentStat("Patients Ahead", "$aheadCount")
-                                        ActiveAppointmentStat("Est. Waiting", "${aheadCount * 12} min")
+                                        val averageServiceTime = doctors.find { it.id == activeToken.doctorId }?.averageServiceTimeMinutes ?: 15
+                                        ActiveAppointmentStat("Est. Waiting", "${aheadCount * averageServiceTime} min")
                                     }
 
                                     Spacer(modifier = Modifier.height(14.dp))
@@ -1614,6 +1664,13 @@ fun PatientQuickActionOverlay(
     onBack: () -> Unit
 ) {
     val completedTokens = patientTokens.filter { it.status == TokenStatus.COMPLETED }
+    val patientPhone by viewModel.patientPhone.collectAsState()
+    val labReports by viewModel.labReports.collectAsState()
+    LaunchedEffect(action) {
+        if (action == "Lab Reports") {
+            viewModel.fetchLabReports(patientPhone)
+        }
+    }
     
     Box(
         modifier = Modifier
@@ -1677,7 +1734,9 @@ fun PatientQuickActionOverlay(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(token.doctorName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                            Text("12 May 2024", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            val formatter = remember { java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()) }
+                                            val dateStr = remember(token.createdAt) { formatter.format(java.util.Date(token.createdAt)) }
+                                            Text(dateStr, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                         Text(token.departmentName, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -1738,52 +1797,58 @@ fun PatientQuickActionOverlay(
                         }
                     }
                     "Lab Reports" -> {
-                        val reports = listOf(
-                            Triple("Complete Blood Count (CBC)", "14 May 2024", "Normal"),
-                            Triple("Lipid Profile Test", "14 May 2024", "Borderline"),
-                            Triple("Electrocardiogram (ECG)", "12 May 2024", "Normal"),
-                            Triple("Chest X-Ray PA View", "10 May 2024", "Normal")
-                        )
-                        items(reports) { (name, date, status) ->
-                            SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                        if (labReports.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(Icons.Outlined.SupportAgent, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        } else {
+                            items(labReports) { report ->
+                                SpotlightCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(Icons.Outlined.SupportAgent, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Column {
+                                                Text(report.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                Text("Date: ${report.date}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
                                         }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column {
-                                            Text(name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                            Text("Date: $date", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                    }
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(if (status == "Normal") Color(0xFFEBFDF5) else Color(0xFFFFF7ED))
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = status,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (status == "Normal") Color(0xFF10B981) else Color(0xFFF97316)
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        IconButton(onClick = {}) {
-                                            Icon(Icons.Default.FileDownload, contentDescription = "Download Report", tint = MaterialTheme.colorScheme.primary)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            val status = report.status
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(if (status.contains("Normal", ignoreCase = true)) Color(0xFFEBFDF5) else Color(0xFFFFF7ED))
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = status,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (status.contains("Normal", ignoreCase = true)) Color(0xFF10B981) else Color(0xFFF97316)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            IconButton(onClick = {}) {
+                                                Icon(Icons.Default.FileDownload, contentDescription = "Download Report", tint = MaterialTheme.colorScheme.primary)
+                                            }
                                         }
                                     }
                                 }

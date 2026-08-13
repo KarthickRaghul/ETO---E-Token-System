@@ -72,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.eto.manager.domain.model.Doctor
 import com.eto.manager.presentation.admin.AdminView
 import com.eto.manager.presentation.components.LivePhoneAlert
 import com.eto.manager.presentation.components.SpotlightCard
@@ -151,9 +152,9 @@ fun EtoAppShell(
                 val patientPhone by viewModel.patientPhone.collectAsState()
                 
                 val doctors by viewModel.doctors.collectAsState()
-                val selectedDoctorId by viewModel.selectedDoctorId.collectAsState()
-                val currentDoctor = doctors.find { it.id == selectedDoctorId }
-                val doctorName = currentDoctor?.name ?: "Dr. Rahul Verma"
+                val selectedDoctorForView by viewModel.selectedDoctorForView.collectAsState()
+                val currentDoctor = doctors.find { it.id == selectedDoctorForView }
+                val doctorName = currentDoctor?.name ?: ""
 
                 CommonTopHeader(
                     currentRole = currentRole,
@@ -167,7 +168,9 @@ fun EtoAppShell(
                     onRoleChange = { role ->
                         viewModel.setRole(role)
                         activeTab = 0 // Reset tab when role changes
-                    }
+                    },
+                    doctors = doctors,
+                    onDoctorChange = { viewModel.selectDoctorForView(it) }
                 )
             },
             bottomBar = {
@@ -243,10 +246,13 @@ fun CommonTopHeader(
     doctorName: String,
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit,
-    onRoleChange: (UserRole) -> Unit
+    onRoleChange: (UserRole) -> Unit,
+    doctors: List<Doctor> = emptyList(),
+    onDoctorChange: ((String) -> Unit)? = null
 ) {
     val isDark = MaterialTheme.colorScheme.background == DarkBgStart
     var menuExpanded by remember { mutableStateOf(false) }
+    var doctorMenuExpanded by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -275,23 +281,63 @@ fun CommonTopHeader(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column {
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .then(
+                        if (currentRole == UserRole.DOCTOR && doctors.isNotEmpty()) {
+                            Modifier.clickable { doctorMenuExpanded = true }
+                        } else {
+                            Modifier
+                        }
+                    )
+            ) {
                 Text(
                     text = "Good Morning",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
-                Text(
-                    text = when (currentRole) {
-                        UserRole.PATIENT -> if (patientName.isBlank()) "John Doe" else patientName
-                        UserRole.RECEPTIONIST -> "Receptionist"
-                        UserRole.DOCTOR -> if (doctorName.isBlank()) "Dr. Sarah Jenkins" else doctorName
-                        UserRole.ADMIN -> "Administrator"
-                    },
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = when (currentRole) {
+                            UserRole.PATIENT -> if (patientName.isBlank()) "John Doe" else patientName
+                            UserRole.RECEPTIONIST -> "Receptionist"
+                            UserRole.DOCTOR -> if (doctorName.isBlank()) "Dr. Sarah Jenkins" else {
+                                if (doctorName.startsWith("Dr. ")) doctorName else "Dr. $doctorName"
+                            }
+                            UserRole.ADMIN -> "Administrator"
+                        },
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (currentRole == UserRole.DOCTOR && doctors.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Icon(
+                            imageVector = Icons.Default.ExpandMore,
+                            contentDescription = "Switch Doctor Account",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                
+                if (currentRole == UserRole.DOCTOR && doctors.isNotEmpty()) {
+                    DropdownMenu(
+                        expanded = doctorMenuExpanded,
+                        onDismissRequest = { doctorMenuExpanded = false }
+                    ) {
+                        doctors.forEach { doc ->
+                            DropdownMenuItem(
+                                text = { Text(doc.name, fontSize = 13.sp) },
+                                onClick = {
+                                    onDoctorChange?.invoke(doc.id)
+                                    doctorMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
 

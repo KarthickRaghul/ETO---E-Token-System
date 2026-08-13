@@ -4,9 +4,11 @@ import android.util.Log
 import com.eto.manager.data.local.dao.DepartmentDao
 import com.eto.manager.data.local.dao.DoctorDao
 import com.eto.manager.data.local.dao.TokenDao
+import com.eto.manager.data.local.dao.HospitalDao
 import com.eto.manager.data.local.entity.DepartmentEntity
 import com.eto.manager.data.local.entity.DoctorEntity
 import com.eto.manager.data.local.entity.TokenEntity
+import com.eto.manager.data.local.entity.HospitalEntity
 import com.eto.manager.data.remote.ApiService
 import com.eto.manager.data.remote.ConsultationRequest
 import com.eto.manager.data.remote.RetrofitClient
@@ -14,6 +16,7 @@ import com.eto.manager.data.remote.SocketManager
 import com.eto.manager.data.remote.TokenRequest
 import com.eto.manager.domain.model.Department
 import com.eto.manager.domain.model.Doctor
+import com.eto.manager.domain.model.Hospital
 import com.eto.manager.domain.model.PaymentStatus
 import com.eto.manager.domain.model.Token
 import com.eto.manager.domain.model.TokenStatus
@@ -29,7 +32,8 @@ import kotlinx.coroutines.withContext
 class EtoRepositoryImpl(
     private val doctorDao: DoctorDao,
     private val departmentDao: DepartmentDao,
-    private val tokenDao: TokenDao
+    private val tokenDao: TokenDao,
+    private val hospitalDao: HospitalDao
 ) : EtoRepository {
 
     private val apiService = RetrofitClient.apiService
@@ -47,10 +51,24 @@ class EtoRepositoryImpl(
         repositoryScope.launch {
             syncWithBackend()
         }
+        // Periodic background sync polling loop (every 5 seconds)
+        repositoryScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(5000)
+                Log.d("EtoRepositoryImpl", "Periodic background sync polling...")
+                syncWithBackend()
+            }
+        }
     }
 
     private suspend fun syncWithBackend() {
         try {
+            // Sync Hospitals
+            val remoteHospitals = apiService.getHospitals()
+            if (remoteHospitals.isNotEmpty()) {
+                hospitalDao.insertHospitals(remoteHospitals)
+            }
+
             // Sync Departments
             val remoteDepts = apiService.getDepartments()
             if (remoteDepts.isNotEmpty()) {
@@ -63,12 +81,9 @@ class EtoRepositoryImpl(
                 doctorDao.insertDoctors(remoteDocs)
             }
 
-            // Sync Tokens (clear local first to reflect exact state in backend queue)
+            // Sync Tokens atomically using a Room transaction to prevent UI flickering/recompositions
             val remoteTokens = apiService.getTokens()
-            tokenDao.clearAllTokens()
-            if (remoteTokens.isNotEmpty()) {
-                tokenDao.insertTokens(remoteTokens)
-            }
+            tokenDao.replaceAllTokens(remoteTokens)
             Log.d("EtoRepositoryImpl", "Successfully synced all tables with backend.")
         } catch (e: Exception) {
             Log.e("EtoRepositoryImpl", "Failed to sync data with Node.js backend", e)
@@ -83,6 +98,12 @@ class EtoRepositoryImpl(
 
     override fun getDepartments(): Flow<List<Department>> {
         return departmentDao.getAllDepartments().map { list ->
+            list.map { it.toDomain() }
+        }
+    }
+
+    override fun getHospitals(): Flow<List<Hospital>> {
+        return hospitalDao.getAllHospitals().map { list ->
             list.map { it.toDomain() }
         }
     }
@@ -212,7 +233,8 @@ class EtoRepositoryImpl(
         departmentName = departmentName,
         rating = rating,
         averageServiceTimeMinutes = averageServiceTimeMinutes,
-        isAvailable = isAvailable
+        isAvailable = isAvailable,
+        hospitalId = hospitalId
     )
 
     private fun DepartmentEntity.toDomain() = Department(
@@ -220,6 +242,19 @@ class EtoRepositoryImpl(
         name = name,
         description = description,
         iconName = iconName
+    )
+
+    private fun HospitalEntity.toDomain() = Hospital(
+        id = id,
+        name = name,
+        registrationNumber = registrationNumber,
+        description = description,
+        phone = phone,
+        email = email,
+        city = city,
+        state = state,
+        latitude = latitude,
+        longitude = longitude
     )
 
     private fun TokenEntity.toDomain() = Token(
@@ -244,8 +279,39 @@ class EtoRepositoryImpl(
         diagnosis = diagnosis,
         prescription = prescription,
         billAmount = billAmount,
-        paymentStatus = if (paymentStatus == "PAID") PaymentStatus.PAID else PaymentStatus.PENDING
+        paymentStatus = if (paymentStatus == "PAID") PaymentStatus.PAID else PaymentStatus.PENDING,
+        hospitalName = hospitalName
     )
+
+    override suspend fun refreshData() {
+        withContext(Dispatchers.IO) {
+            syncWithBackend()
+        }
+    }
+
+    override suspend fun updatePatientProfile(phone: String, body: Map<String, String>): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.updatePatientProfile(phone, body)
+                syncWithBackend()
+                response["success"] == true
+            } catch (e: Exception) {
+                Log.e("EtoRepositoryImpl", "Error updating patient profile", e)
+                false
+            }
+        }
+    }
+
+    override suspend fun getLabReports(phone: String): List<com.eto.manager.data.remote.LabReportResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.getLabReports(phone)
+            } catch (e: Exception) {
+                Log.e("EtoRepositoryImpl", "Error getting lab reports from backend", e)
+                emptyList()
+            }
+        }
+    }
 
     override suspend fun getPatientProfile(phone: String): com.eto.manager.data.remote.PatientProfileResponse {
         return withContext(Dispatchers.IO) {

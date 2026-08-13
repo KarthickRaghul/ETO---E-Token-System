@@ -66,6 +66,12 @@ interface TokenDao {
 
     @Query("DELETE FROM tokens")
     suspend fun clearAllTokens()
+
+    @androidx.room.Transaction
+    suspend fun replaceAllTokens(tokens: List<TokenEntity>) {
+        clearAllTokens()
+        insertTokens(tokens)
+    }
 }
 
 @Dao
