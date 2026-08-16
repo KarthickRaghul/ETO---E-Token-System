@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.eto.manager.domain.model.Doctor
 import com.eto.manager.domain.model.Token
 import com.eto.manager.domain.model.TokenStatus
+import com.eto.manager.domain.model.getDisplayQueueNumber
 import com.eto.manager.presentation.EtoViewModel
 import com.eto.manager.presentation.UserRole
 import com.eto.manager.presentation.components.EmptyState
@@ -154,13 +155,14 @@ fun DoctorView(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Patients List
-                    val filteredTokens = remember(doctorQueue, searchQuery) {
+                    val filteredTokens = remember(doctorQueue, searchQuery, tokens) {
                         doctorQueue.filter {
                             (it.status == TokenStatus.APPROVED || it.status == TokenStatus.SERVING) &&
                             (searchQuery.isEmpty() ||
                             it.patientName.contains(searchQuery, ignoreCase = true) ||
                             it.patientPhone.contains(searchQuery) ||
-                            it.tokenNumber.contains(searchQuery))
+                            it.tokenNumber.contains(searchQuery) ||
+                            it.getDisplayQueueNumber(tokens).contains(searchQuery))
                         }.sortedBy { it.id }
                     }
 
@@ -229,6 +231,7 @@ fun DoctorView(
 
                                 LivePatientCard(
                                     token = tk,
+                                    tokens = tokens,
                                     demoDetails = demoDetails,
                                     patientTime = patientTime,
                                     isServing = isServing,
@@ -687,7 +690,7 @@ fun ReplicaPatientCard(
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                         Text(
-                            text = "#${patient.tokenNumber}",
+                            text = patient.tokenNumber,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.primary
@@ -715,6 +718,7 @@ fun ReplicaPatientCard(
 @Composable
 fun LivePatientCard(
     token: Token,
+    tokens: List<Token>,
     demoDetails: Pair<String, String>,
     patientTime: String,
     isServing: Boolean,
@@ -813,7 +817,7 @@ fun LivePatientCard(
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                         Text(
-                            text = "#${token.tokenNumber}",
+                            text = token.getDisplayQueueNumber(tokens),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.primary

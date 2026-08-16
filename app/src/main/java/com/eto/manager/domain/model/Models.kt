@@ -64,3 +64,38 @@ enum class PaymentStatus {
     PENDING,
     PAID
 }
+
+fun Token.getDisplayQueueNumber(allTokens: List<Token>): String {
+    if (this.status == TokenStatus.COMPLETED || this.status == TokenStatus.SKIPPED) {
+        val digitsOnly = this.tokenNumber.filter { it.isDigit() }
+        return if (digitsOnly.isNotEmpty()) digitsOnly else this.id.toString()
+    }
+    
+    val doctorTokens = allTokens.filter { 
+        it.doctorId == this.doctorId && 
+        it.status != TokenStatus.COMPLETED && 
+        it.status != TokenStatus.SKIPPED 
+    }
+    
+    val servingToken = doctorTokens.find { it.status == TokenStatus.SERVING }
+    val approvedTokens = doctorTokens.filter { it.status == TokenStatus.APPROVED }.sortedBy { it.id }
+    val pendingTokens = doctorTokens.filter { it.status == TokenStatus.PENDING }.sortedBy { it.id }
+    
+    return when (this.status) {
+        TokenStatus.SERVING -> "1"
+        TokenStatus.APPROVED -> {
+            val index = approvedTokens.indexOfFirst { it.id == this.id }
+            val servingOffset = if (servingToken != null) 1 else 0
+            if (index >= 0) (index + 1 + servingOffset).toString() else "1"
+        }
+        TokenStatus.PENDING -> {
+            val index = pendingTokens.indexOfFirst { it.id == this.id }
+            val servingOffset = if (servingToken != null) 1 else 0
+            if (index >= 0) (index + 1 + servingOffset + approvedTokens.size).toString() else (approvedTokens.size + servingOffset + 1).toString()
+        }
+        else -> {
+            val digitsOnly = this.tokenNumber.filter { it.isDigit() }
+            if (digitsOnly.isNotEmpty()) digitsOnly else this.id.toString()
+        }
+    }
+}

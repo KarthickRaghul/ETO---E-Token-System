@@ -26,6 +26,7 @@ import com.eto.manager.domain.model.Doctor
 import com.eto.manager.domain.model.PaymentStatus
 import com.eto.manager.domain.model.Token
 import com.eto.manager.domain.model.TokenStatus
+import com.eto.manager.domain.model.getDisplayQueueNumber
 import com.eto.manager.presentation.EtoViewModel
 import com.eto.manager.presentation.components.EmptyState
 import com.eto.manager.presentation.components.SpotlightCard
@@ -107,6 +108,7 @@ fun ReceptionistView(
                                 items(activeQueue) { token ->
                                     ReceptionistQueuePatientCard(
                                         token = token,
+                                        tokens = tokens,
                                         isDark = isDark,
                                         onClick = { selectedTokenForDetails = token }
                                     )
@@ -324,6 +326,7 @@ fun ReceptionistView(
 @Composable
 fun ReceptionistQueuePatientCard(
     token: Token,
+    tokens: List<Token>,
     isDark: Boolean,
     onClick: () -> Unit
 ) {
@@ -413,7 +416,7 @@ fun ReceptionistQueuePatientCard(
             // Right side: Token Number
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = token.tokenNumber,
+                    text = token.getDisplayQueueNumber(tokens),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF2563EB)

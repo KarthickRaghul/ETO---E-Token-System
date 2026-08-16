@@ -295,7 +295,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
             repository.updateTokenStatus(token.id, "APPROVED")
             addNotification(
                 title = "Token Approved",
-                message = "Token ${token.tokenNumber} is approved! You are now in the active waiting queue for ${token.doctorName}.",
+                message = "Token ${token.tokenNumber.filter { it.isDigit() }} is approved! You are now in the active waiting queue for ${token.doctorName}.",
                 type = "SMS"
             )
         }
@@ -306,7 +306,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
             repository.updateTokenStatus(token.id, "SKIPPED")
             addNotification(
                 title = "Token Cancelled",
-                message = "Your token request ${token.tokenNumber} was rejected by receptionist.",
+                message = "Your token request ${token.tokenNumber.filter { it.isDigit() }} was rejected by receptionist.",
                 type = "SMS"
             )
         }
@@ -328,7 +328,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
                 repository.updateTokenStatus(next.id, "SERVING")
                 addNotification(
                     title = "Your Turn is Near",
-                    message = "Token ${next.tokenNumber} (${next.patientName}): Please report to ${next.doctorName}'s consultation room immediately.",
+                    message = "Token ${next.tokenNumber.filter { it.isDigit() }} (${next.patientName}): Please report to ${next.doctorName}'s consultation room immediately.",
                     type = "SMS"
                 )
             }
@@ -340,7 +340,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
             repository.updateTokenStatus(token.id, "SKIPPED")
             addNotification(
                 title = "Token Skipped",
-                message = "Token ${token.tokenNumber} was marked as skipped. Please contact receptionist to recall.",
+                message = "Token ${token.tokenNumber.filter { it.isDigit() }} was marked as skipped. Please contact receptionist to recall.",
                 type = "SMS"
             )
         }
@@ -376,7 +376,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
             repository.recordPayment(token.id)
             addNotification(
                 title = "Payment Confirmed",
-                message = "Payment of ₹${token.billAmount} for token ${token.tokenNumber} confirmed. Receipt sent.",
+                message = "Payment of ₹${token.billAmount} for token ${token.tokenNumber.filter { it.isDigit() }} confirmed. Receipt sent.",
                 type = "SMS"
             )
         }
@@ -428,7 +428,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
                         repository.updateTokenStatus(oldestPending.id, "APPROVED")
                         addNotification(
                             title = "Appointment Approved (Simulated)",
-                            message = "Token ${oldestPending.tokenNumber} for ${oldestPending.patientName} approved by front desk.",
+                            message = "Token ${oldestPending.tokenNumber.filter { it.isDigit() }} for ${oldestPending.patientName} approved by front desk.",
                             type = "SMS"
                         )
                     }
@@ -469,7 +469,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
                             repository.updateTokenStatus(next.id, "SERVING")
                             addNotification(
                                 title = "Calling Patient (Simulated)",
-                                message = "Token ${next.tokenNumber} (${next.patientName}): Please proceed to ${next.doctorName}'s room.",
+                                message = "Token ${next.tokenNumber.filter { it.isDigit() }} (${next.patientName}): Please proceed to ${next.doctorName}'s room.",
                                 type = "SMS"
                             )
                             break
@@ -484,7 +484,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
                         repository.recordPayment(payment.id)
                         addNotification(
                             title = "Bill Paid (Simulated)",
-                            message = "Payment of ₹${payment.billAmount.toInt()} received for ${payment.patientName} (${payment.tokenNumber}).",
+                            message = "Payment of ₹${payment.billAmount.toInt()} received for ${payment.patientName} (${payment.tokenNumber.filter { it.isDigit() }}).",
                             type = "IN_APP"
                         )
                     }

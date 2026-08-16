@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eto.manager.domain.model.Token
 import com.eto.manager.domain.model.TokenStatus
+import com.eto.manager.domain.model.getDisplayQueueNumber
 import com.eto.manager.presentation.EtoViewModel
 import com.eto.manager.presentation.UserRole
 import com.eto.manager.presentation.theme.*
@@ -39,6 +40,7 @@ fun PatientDetailsView(
     modifier: Modifier = Modifier
 ) {
     val isDark = MaterialTheme.colorScheme.background == DarkBgStart
+    val allTokens by viewModel.tokens.collectAsState()
 
     // Tab state
     val tabs = listOf("Overview", "History", "Reports", "Prescriptions", "Notes")
@@ -166,7 +168,7 @@ fun PatientDetailsView(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "ID: PT${String.format("%04d", token.id % 1000)} • Token #${token.tokenNumber}",
+                                    text = "ID: PT${String.format("%04d", token.id % 1000)} • Token #${token.getDisplayQueueNumber(allTokens)}",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold

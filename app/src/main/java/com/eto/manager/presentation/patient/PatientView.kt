@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.sp
 import com.eto.manager.domain.model.Doctor
 import com.eto.manager.domain.model.Token
 import com.eto.manager.domain.model.TokenStatus
+import com.eto.manager.domain.model.getDisplayQueueNumber
 import com.eto.manager.presentation.EtoViewModel
 import com.eto.manager.presentation.components.EmptyState
 import com.eto.manager.presentation.components.SectionHeader
@@ -903,8 +904,8 @@ fun PatientView(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        ActiveAppointmentStat("Token No.", activeToken.tokenNumber, isPrimary = true)
-                                        ActiveAppointmentStat("Current Token", servingToken?.tokenNumber ?: "None")
+                                        ActiveAppointmentStat("Token No.", activeToken.getDisplayQueueNumber(tokens), isPrimary = true)
+                                        ActiveAppointmentStat("Current Token", servingToken?.getDisplayQueueNumber(tokens) ?: "None")
                                         ActiveAppointmentStat("Patients Ahead", "$aheadCount")
                                         val averageServiceTime = doctors.find { it.id == activeToken.doctorId }?.averageServiceTimeMinutes ?: 15
                                         ActiveAppointmentStat("Est. Waiting", "${aheadCount * averageServiceTime} min")
@@ -1472,7 +1473,7 @@ fun ActiveTokenCard(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     ShinyText(
-                        text = activeToken.tokenNumber,
+                        text = activeToken.getDisplayQueueNumber(tokens),
                         style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }
@@ -1485,7 +1486,7 @@ fun ActiveTokenCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
-            QueueDetailItem("Now Serving", servingToken?.tokenNumber ?: "None")
+            QueueDetailItem("Now Serving", servingToken?.getDisplayQueueNumber(tokens) ?: "None")
             QueueDetailItem("Ahead Of You", "$aheadCount Patients")
             QueueDetailItem("Est. Wait Time", "${aheadCount * 12} mins")
         }
@@ -1625,8 +1626,9 @@ fun QuickActionCard(
      ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 12.dp, horizontal = 4.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -1642,7 +1644,7 @@ fun QuickActionCard(
                     modifier = Modifier.size(18.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = label,
                 fontSize = 11.sp,

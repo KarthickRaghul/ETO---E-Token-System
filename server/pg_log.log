@@ -298,3 +298,54 @@
 	      LEFT JOIN hospitals h ON r.hospital_id = h.id
 	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
 	    
+2026-08-15 10:49:19.287 IST [64855] LOG:  starting PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-08-15 10:49:19.288 IST [64855] LOG:  listening on IPv6 address "::1", port 5432
+2026-08-15 10:49:19.288 IST [64855] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2026-08-15 10:49:19.296 IST [64855] LOG:  listening on Unix socket "/home/karthi/Projects/Eto/server/.s.PGSQL.5432"
+2026-08-15 10:49:19.306 IST [64861] LOG:  database system was shut down at 2026-08-13 23:19:49 IST
+2026-08-15 10:49:19.316 IST [64855] LOG:  database system is ready to accept connections
+2026-08-15 10:49:19.352 IST [64855] LOG:  received SIGHUP, reloading configuration files
+2026-08-15 10:49:21.133 IST [64904] FATAL:  database "karthi" does not exist
+2026-08-15 10:50:20.642 IST [65138] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-15 10:50:20.642 IST [65138] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-15 10:50:20.642 IST [65138] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-15 10:54:19.446 IST [64859] LOG:  checkpoint starting: time
+2026-08-15 10:54:28.348 IST [64859] LOG:  checkpoint complete: wrote 87 buffers (0.5%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=8.728 s, sync=0.037 s, total=8.903 s; sync files=47, longest=0.005 s, average=0.001 s; distance=487 kB, estimate=487 kB; lsn=0/37994B8, redo lsn=0/377E218
+2026-08-15 10:59:19.449 IST [64859] LOG:  checkpoint starting: time
+2026-08-15 10:59:25.930 IST [64859] LOG:  checkpoint complete: wrote 64 buffers (0.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=6.425 s, sync=0.032 s, total=6.482 s; sync files=44, longest=0.005 s, average=0.001 s; distance=357 kB, estimate=474 kB; lsn=0/37D7978, redo lsn=0/37D7920
+2026-08-15 11:04:20.030 IST [64859] LOG:  checkpoint starting: time
+2026-08-15 11:04:26.856 IST [64859] LOG:  checkpoint complete: wrote 66 buffers (0.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=6.630 s, sync=0.088 s, total=6.827 s; sync files=43, longest=0.059 s, average=0.003 s; distance=343 kB, estimate=461 kB; lsn=0/382D7D0, redo lsn=0/382D740
+2026-08-15 11:08:33.297 IST [82401] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-15 11:08:33.297 IST [82401] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-15 11:08:33.297 IST [82401] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-15 11:09:20.956 IST [64859] LOG:  checkpoint starting: time
+2026-08-15 11:09:27.639 IST [64859] LOG:  checkpoint complete: wrote 66 buffers (0.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=6.626 s, sync=0.030 s, total=6.684 s; sync files=41, longest=0.005 s, average=0.001 s; distance=379 kB, estimate=453 kB; lsn=0/388C4E0, redo lsn=0/388C488
+2026-08-15 11:10:31.131 IST [84319] ERROR:  operator does not exist: uuid = text at character 240
+2026-08-15 11:10:31.131 IST [84319] HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+2026-08-15 11:10:31.131 IST [84319] STATEMENT:  
+	      SELECT r.*, u.first_name, u.last_name, u.email, u.phone, h.name as hospital_name
+	      FROM receptionists r
+	      JOIN users u ON r.user_id = u.id
+	      LEFT JOIN hospitals h ON r.hospital_id = h.id
+	      WHERE u.phone = $1 OR r.id = $1 OR r.employee_number = $1
+	    
+2026-08-15 11:14:20.739 IST [64859] LOG:  checkpoint starting: time
+2026-08-15 11:14:27.971 IST [64859] LOG:  checkpoint complete: wrote 70 buffers (0.4%), wrote 2 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=7.029 s, sync=0.152 s, total=7.232 s; sync files=43, longest=0.122 s, average=0.004 s; distance=423 kB, estimate=450 kB; lsn=0/38F6298, redo lsn=0/38F6208
+2026-08-15 16:40:50.152 IST [64855] LOG:  received smart shutdown request
+2026-08-15 16:40:50.157 IST [64855] LOG:  background worker "logical replication launcher" (PID 64864) exited with exit code 1
+2026-08-15 16:40:50.158 IST [64859] LOG:  shutting down
+2026-08-15 16:40:50.170 IST [64859] LOG:  checkpoint starting: shutdown immediate
+2026-08-15 16:40:50.223 IST [64859] LOG:  checkpoint complete: wrote 0 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.018 s, sync=0.001 s, total=0.065 s; sync files=0, longest=0.000 s, average=0.000 s; distance=0 kB, estimate=405 kB; lsn=0/38F6348, redo lsn=0/38F6348
+2026-08-15 16:40:50.241 IST [64855] LOG:  database system is shut down
