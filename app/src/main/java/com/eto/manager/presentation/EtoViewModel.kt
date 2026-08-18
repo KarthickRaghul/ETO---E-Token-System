@@ -24,7 +24,18 @@ import kotlinx.coroutines.launch
 import com.eto.manager.data.remote.PatientProfileResponse
 import com.eto.manager.data.remote.DoctorProfileResponse
 import com.eto.manager.data.remote.ReceptionistProfileResponse
+import org.json.JSONObject
+import okhttp3.Request
+import okhttp3.OkHttpClient
+import java.net.URLEncoder
+import kotlinx.coroutines.Dispatchers
 
+data class MapHospital(
+    val name: String,
+    val latitude: Double,
+    val longitude: Double,
+    val isPartner: Boolean = false
+)
 
 data class NotificationItem(
     val title: String,
@@ -43,6 +54,62 @@ enum class UserRole {
 class EtoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: EtoRepository
+
+    private val _osmHospitals = MutableStateFlow<List<MapHospital>>(emptyList())
+    val osmHospitals: StateFlow<List<MapHospital>> = _osmHospitals.asStateFlow()
+
+    fun fetchOsmHospitals(lat: Double = 13.0827, lon: Double = 80.2707) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val client = OkHttpClient()
+                val query = """
+                    [out:json][timeout:15];
+                    (
+                      node["amenity"="hospital"](around:8000,$lat,$lon);
+                      way["amenity"="hospital"](around:8000,$lat,$lon);
+                    );
+                    out center;
+                """.trimIndent()
+                
+                val url = "https://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(query, "UTF-8")
+                val request = Request.Builder().url(url).build()
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val body = response.body?.string()
+                    if (body != null) {
+                        val jsonObject = JSONObject(body)
+                        val elements = jsonObject.optJSONArray("elements")
+                        val list = mutableListOf<MapHospital>()
+                        if (elements != null) {
+                            for (i in 0 until elements.length()) {
+                                val item = elements.getJSONObject(i)
+                                val tags = item.optJSONObject("tags")
+                                val name = tags?.optString("name") ?: tags?.optString("name:en") ?: "Hospital"
+                                
+                                var latitude = item.optDouble("lat", Double.NaN)
+                                var longitude = item.optDouble("lon", Double.NaN)
+                                if (latitude.isNaN() || longitude.isNaN()) {
+                                    val center = item.optJSONObject("center")
+                                    if (center != null) {
+                                        latitude = center.optDouble("lat")
+                                        longitude = center.optDouble("lon")
+                                    }
+                                }
+                                
+                                if (!latitude.isNaN() && !longitude.isNaN()) {
+                                    list.add(MapHospital(name, latitude, longitude, false))
+                                }
+                            }
+                        }
+                        val uniqueList = list.distinctBy { "${it.latitude},${it.longitude}" }
+                        _osmHospitals.value = uniqueList
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("EtoViewModel", "Error fetching OSM hospitals", e)
+            }
+        }
+    }
 
     // UI Roles and Navigation States
     private val _currentRole = MutableStateFlow(UserRole.PATIENT)
@@ -285,6 +352,9 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
                 previousTokensList = currentTokensList
             }
         }
+
+        // Fetch OSM Hospitals centered on Chennai
+        fetchOsmHospitals()
 
         // Start background queue progression loop
         startSimulation()

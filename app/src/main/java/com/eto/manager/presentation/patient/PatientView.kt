@@ -344,6 +344,7 @@ fun PatientView(
                                 .background(if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9))
                                 .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
                         ) {
+                            val osmHospitals by viewModel.osmHospitals.collectAsState()
                             AndroidView(
                                 factory = { ctx ->
                                     MapView(ctx).apply {
@@ -354,6 +355,25 @@ fun PatientView(
                                 },
                                 update = { mapView ->
                                     mapView.overlays.clear()
+                                    
+                                    // 1. Draw OSM dynamic hospitals
+                                    osmHospitals.forEach { hosp ->
+                                        val isOverlapping = filteredHospitals.any { fh ->
+                                            Math.abs(fh.latitude - hosp.latitude) < 0.002 &&
+                                            Math.abs(fh.longitude - hosp.longitude) < 0.002
+                                        }
+                                        if (!isOverlapping) {
+                                            val marker = org.osmdroid.views.overlay.Marker(mapView).apply {
+                                                position = GeoPoint(hosp.latitude, hosp.longitude)
+                                                setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_BOTTOM)
+                                                title = hosp.name
+                                                subDescription = "Public Hospital (No ETO Booking)"
+                                            }
+                                            mapView.overlays.add(marker)
+                                        }
+                                    }
+
+                                    // 2. Draw Database partner hospitals
                                     filteredHospitals.forEach { hosp ->
                                         val marker = org.osmdroid.views.overlay.Marker(mapView).apply {
                                             position = GeoPoint(hosp.latitude, hosp.longitude)
@@ -758,23 +778,47 @@ fun PatientView(
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9))
                             ) {
+                                val dbHospitals by viewModel.hospitals.collectAsState()
+                                val osmHospitals by viewModel.osmHospitals.collectAsState()
                                 AndroidView(
                                     factory = { ctx ->
                                         MapView(ctx).apply {
                                             setMultiTouchControls(true)
-                                            controller.setZoom(15.0)
-                                            // Center on Chennai coordinates
-                                            val mapCenter = GeoPoint(13.0827, 80.2707)
-                                            controller.setCenter(mapCenter)
-
-                                            // Add ETO Hospital Center marker
-                                            val marker = Marker(this).apply {
-                                                position = mapCenter
-                                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                                title = "ETO Hospital Center"
-                                            }
-                                            overlays.add(marker)
+                                            controller.setZoom(13.5)
+                                            controller.setCenter(GeoPoint(13.0827, 80.2707))
                                         }
+                                    },
+                                    update = { mapView ->
+                                        mapView.overlays.clear()
+                                        
+                                        // 1. Draw dynamic public hospitals
+                                        osmHospitals.forEach { hosp ->
+                                            val isOverlapping = dbHospitals.any { dbh ->
+                                                Math.abs(dbh.latitude - hosp.latitude) < 0.002 &&
+                                                Math.abs(dbh.longitude - hosp.longitude) < 0.002
+                                            }
+                                            if (!isOverlapping) {
+                                                val marker = Marker(mapView).apply {
+                                                    position = GeoPoint(hosp.latitude, hosp.longitude)
+                                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                                    title = hosp.name
+                                                    subDescription = "Public Hospital (No ETO Booking)"
+                                                }
+                                                mapView.overlays.add(marker)
+                                            }
+                                        }
+
+                                        // 2. Draw ETO partner hospitals
+                                        dbHospitals.forEach { hosp ->
+                                            val marker = Marker(mapView).apply {
+                                                position = GeoPoint(hosp.latitude, hosp.longitude)
+                                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                                title = hosp.name
+                                                subDescription = "★ ETO Partner (Bookable)"
+                                            }
+                                            mapView.overlays.add(marker)
+                                        }
+                                        mapView.invalidate()
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 )
