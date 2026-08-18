@@ -10,7 +10,7 @@ The system consists of:
 
 ## 🏛️ System Architecture & Data Flow
 
-The application coordinates state seamlessly between a persistent remote PostgreSQL server and local offline-capable Android devices via WebSocket updates.
+The application coordinates state seamlessly between a persistent remote PostgreSQL server (hosted live on Render) and local offline-capable Android devices via WebSocket updates. Additionally, it integrates a live geographical map showing real-world local healthcare centers.
 
 ```mermaid
 sequenceDiagram
@@ -19,8 +19,9 @@ sequenceDiagram
     participant Receptionist as Receptionist View
     participant Android as Android Room Cache
     participant ApiClient as Socket.io / Retrofit Client
-    participant Server as Node.js Backend Server
-    participant Postgres as PostgreSQL Database
+    participant Server as Render Backend Server
+    participant Postgres as Render PostgreSQL DB
+    participant OSM as OSM Overpass API
 
     Note over Patient, Receptionist: 1. Booking Flow
     Patient->>ApiClient: Book Token Request
@@ -39,16 +40,24 @@ sequenceDiagram
     ApiClient->>Android: Bulk insert latest tokens into Room
     Android-->>Patient: Flow UI update (Pulsing live tracker opens)
     Android-->>Receptionist: Flow UI update (Pending queue badges update)
+
+    Note over Patient, OSM: 3. Dynamic Map Discovery
+    Patient->>ApiClient: Open Nearby Map View
+    ApiClient->>OSM: HTTP GET /api/interpreter?data=[hospital]...
+    OSM-->>ApiClient: Return live public hospitals (lat, lon)
+    ApiClient->>Patient: Render interactive pins (★ ETO Partners vs. Public Clinics)
 ```
 
 ### Component Breakdown
 
-#### 1. Node.js Backend Server (`/server`)
+#### 1. Live Render Backend Server (`/server`)
+* **Live API Base URL**: `https://eto-backend-arsk.onrender.com`
 * **REST API**: Handles transactional operations such as checking health, fetching departments/doctors, booking patient tokens, changing status states, finalizing consultations, and clearing logs.
-* **PostgreSQL Integration (`pg` pool)**: Manages database connections and guarantees ACID transactions. Auto-creates tables and seeds default departments and doctors on launch.
+* **PostgreSQL Integration (`pg` pool)**: Manages database connections and guarantees ACID transactions. Fully configured to run migrations and seed data in production.
 * **Socket.io**: Listens for connection events and instantly broadcasts a `queue_update` ping whenever any write/update transaction completes, prompting clients to refresh.
 
 #### 2. Android Client Application (`/app`)
+* **Dynamic OpenStreetMap (OSM) Engine**: Uses `osmdroid` and queries the free, public **OSM Overpass API** to fetch and render all real-world hospitals in an 8km radius of the user's location. Deduplicates overlapping coordinates against active ETO partners.
 * **Clean Architecture Layers**:
   * **Data Layer (`com.eto.manager.data`)**:
     * `AppDatabase.kt` & Room DAOs (`DoctorDao`, `DepartmentDao`, `TokenDao`) caching state locally.
@@ -58,7 +67,7 @@ sequenceDiagram
   * **Domain Layer (`com.eto.manager.domain`)**:
     * Models (`Doctor`, `Token`, `Department`) and repository interfaces completely detached from frameworks.
   * **Presentation Layer (`com.eto.manager.presentation`)**:
-    * `EtoViewModel.kt`: Operates on reactive MVVM flows via `StateFlow` variables. Schedules simulation tasks and switches user personas.
+    * `EtoViewModel.kt`: Operates on reactive MVVM flows via `StateFlow` variables. Schedules simulation tasks, switches user personas, and fetches dynamic OSM map data.
     * Views: Role-specific Compose views (`PatientView`, `ReceptionistView`, `DoctorView`, `AdminView`) and components.
 
 ---
@@ -154,26 +163,36 @@ The server will initialize the database, verify/create tables (`departments`, `d
 * **Android SDK 34** (compileSdk & targetSdk).
 
 #### Connection Endpoint Configuration
-* **Emulator**: By default, the app is configured to connect to `10.0.2.2:3000`, which is the loopback alias pointing to your host computer from inside the Android Emulator.
-* **Physical Device**: If you run the app on a physical phone connected over Wi-Fi, change the base addresses to matching values of your computer's local IP address:
 
-  1. **Get your laptop's local IP address** (on Linux):
+By default, the Android application is configured to connect to the **live Render production backend** (`https://eto-backend-arsk.onrender.com`). There is no setup needed to query live data!
+
+If you want to direct the app to point to your **local server** for debugging, update the endpoints in the following files:
+
+1. **For Local Emulator (using host loopback)**:
+   * In [SocketManager.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/SocketManager.kt#L8):
+     ```kotlin
+     private const val SOCKET_URL = "http://10.0.2.2:3000"
+     ```
+   * In [RetrofitClient.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/RetrofitClient.kt#L11):
+     ```kotlin
+     private const val BASE_URL = "http://10.0.2.2:3000/"
+     ```
+
+2. **For Physical Device (connected to same Wi-Fi network)**:
+   * Determine your computer's local IP address:
      ```bash
      ip route get 1.1.1.1 | awk '{print $7}'
      ```
-     *(This will print something like `192.168.1.50`)*
-
-  2. **Update the address in the Android app**:
-     * Edit [SocketManager.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/SocketManager.kt#L8):
-       ```kotlin
-       private const val SOCKET_URL = "http://YOUR_LAPTOP_IP:3000"
-       ```
-     * Edit [RetrofitClient.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/RetrofitClient.kt#L11):
-       ```kotlin
-       private const val BASE_URL = "http://YOUR_LAPTOP_IP:3000/"
-       ```
-
-  3. **Allow incoming traffic through your firewall** (if blocked):
+     *(e.g., `192.168.1.50`)*
+   * In [SocketManager.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/SocketManager.kt#L8):
+     ```kotlin
+     private const val SOCKET_URL = "http://YOUR_LAPTOP_IP:3000"
+     ```
+   * In [RetrofitClient.kt](file:///home/karthi/Projects/Eto/app/src/main/java/com/eto/manager/data/remote/RetrofitClient.kt#L11):
+     ```kotlin
+     private const val BASE_URL = "http://YOUR_LAPTOP_IP:3000/"
+     ```
+   * Open port 3000 in your local firewall (if enabled):
      ```bash
      sudo ufw allow 3000/tcp
      ```
@@ -233,3 +252,20 @@ Ensure the backend server is running and the Android client app is connected. Fo
 * **Pointer Gesture Safety**: SpotlightCard touch indices are guarded against crashes (`firstOrNull()`).
 * **Responsive Canvas Rendering**: Interactive spline charts and queue circles measure boundary sizes dynamically via `onSizeChanged` callbacks, scaling perfectly across different resolutions.
 * **Coroutines Safety**: All networking and database transactions occur in background dispatcher contexts (`Dispatchers.IO`), keeping the main thread free and smooth.
+
+---
+
+## 🔑 Professional Seed Credentials
+
+Below are the pre-configured credentials loaded in the live environment for verification across all roles:
+
+| Role | Email / Username | Password | Details |
+|------|------------------|----------|---------|
+| **Admin** | `admin@eto.com` | `admin123` | Full administrative simulation & analytics controls |
+| **Patient** | `patient.raghul@eto.com` | `patient123` | PatientRaghul (custom medical history profile) |
+| **Receptionist** | `receptionist.karthi@eto.com` | `receptionist123` | ReceptionistKarthi (handles check-ins & approvals) |
+| **Doctor** | `doctor.sarah@eto.com` | `doctor123` | Dr. Sarah Jenkins (Cardiology) |
+| **Doctor** | `doctor.rajesh@eto.com` | `doctor123` | Dr. Rajesh Kumar (Pediatrics) |
+| **Doctor** | `doctor.ananya@eto.com` | `doctor123` | Dr. Ananya Sen (Dermatology) |
+| **Doctor** | `doctor.vijay@eto.com` | `doctor123` | Dr. Vijay Krish (General Medicine) |
+
