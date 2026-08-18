@@ -141,7 +141,9 @@ async function migrateData() {
         addr: '100 Medical Plaza, Adyar',
         city: 'Chennai',
         state: 'Tamil Nadu',
-        zip: '600020'
+        zip: '600020',
+        lat: 13.0063,
+        lon: 80.2574
       },
       {
         id: HOSPITAL_2_ID,
@@ -153,7 +155,9 @@ async function migrateData() {
         addr: '50 Park Avenue, Mylapore',
         city: 'Chennai',
         state: 'Tamil Nadu',
-        zip: '600004'
+        zip: '600004',
+        lat: 13.0329,
+        lon: 80.2644
       },
       {
         id: HOSPITAL_3_ID,
@@ -165,15 +169,17 @@ async function migrateData() {
         addr: '12 G.N. Chetty Road, T. Nagar',
         city: 'Chennai',
         state: 'Tamil Nadu',
-        zip: '600017'
+        zip: '600017',
+        lat: 13.0418,
+        lon: 80.2337
       }
     ];
 
     for (const h of hospitalsList) {
       await client.query(`
-        INSERT INTO hospitals (id, name, registration_number, description, phone, email, address_line, city, state, postal_code, timezone)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Asia/Kolkata');
-      `, [h.id, h.name, h.reg, h.desc, h.phone, h.email, h.addr, h.city, h.state, h.zip]);
+        INSERT INTO hospitals (id, name, registration_number, description, phone, email, address_line, city, state, postal_code, timezone, latitude, longitude)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Asia/Kolkata', $11, $12);
+      `, [h.id, h.name, h.reg, h.desc, h.phone, h.email, h.addr, h.city, h.state, h.zip, h.lat, h.lon]);
     }
 
     // 2. Create Departments
