@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS tokens (
     approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    symptoms TEXT,
     CONSTRAINT unique_doctor_date_token UNIQUE (hospital_id, doctor_id, queue_date, token_number)
 );
 
