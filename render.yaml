@@ -16,3 +16,4 @@ services:
 
 databases:
   - name: eto-db
+    plan: free
