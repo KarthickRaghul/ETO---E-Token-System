@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     // 10.0.2.2 is the special IP address mapping to the host loopback for Android emulators
-    private const val BASE_URL = "http://10.0.2.2:3000/"
+    private const val BASE_URL = "https://eto-backend-arsk.onrender.com/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

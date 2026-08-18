@@ -5,7 +5,7 @@ import io.socket.client.Socket
 import android.util.Log
 
 object SocketManager {
-    private const val SOCKET_URL = "http://10.0.2.2:3000"
+    private const val SOCKET_URL = "https://eto-backend-arsk.onrender.com"
     private var socket: Socket? = null
 
     fun connect(onQueueUpdate: () -> Unit) {
