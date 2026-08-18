@@ -1,34 +1,75 @@
-# Gradle files
+# ==========================================
+# Android & Gradle
+# ==========================================
 .gradle/
 build/
 app/build/
 **/build/
+*.apk
+*.aar
+*.ap_
+*.der
+*.class
 
-# Android Studio / IntelliJ files
+# Android Studio / IntelliJ IDEA
 .idea/
 *.iml
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/gradle.xml
-.idea/assetWizardSettings.xml
-.idea/dictionaries
-.idea/libraries
-.idea/caches
-
-# Local configuration
+*.ipr
+*.iws
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
 local.properties
+.kotlin/
 
-# OS/System files
+# ==========================================
+# Node.js & Server Backend
+# ==========================================
+node_modules/
+**/node_modules/
+server/node_modules/
+server/.env
+server/db_data/
+server/sent_mails/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm/
+.eslintcache
+
+# ==========================================
+# Databases, Sockets, and Lockfiles
+# ==========================================
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+eto_database
+*.lock
+server/*.lock
+server/.s.PGSQL.*
+.s.PGSQL.*
+
+# ==========================================
+# IDEs, Code Editors & OS
+# ==========================================
+# VS Code
+.vscode/
+.history/
+*.code-workspace
+
+# OS Files
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
 
 # Project-specific temporary/metadata files
 .codegraph/
 .omo/
-
-# Server backend files
-server/node_modules/
-server/db_data/
-server/.env
-server/npm-debug.log
-server/sent_mails/
