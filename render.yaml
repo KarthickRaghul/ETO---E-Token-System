@@ -2,6 +2,7 @@ services:
   - type: web
     name: eto-backend
     env: node
+    plan: free
     rootDir: server
     buildCommand: npm install
     startCommand: node run_migrations.js && node index.js
