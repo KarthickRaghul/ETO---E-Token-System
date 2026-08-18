@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: eto-backend
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node run_migrations.js && node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eto-db
+          property: connectionString
+
+databases:
+  - name: eto-db
+    databaseName: eto_db
+    user: postgres
