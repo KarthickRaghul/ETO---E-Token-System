@@ -3,6 +3,15 @@ require('dotenv').config();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// If DATABASE_URL is provided, prevent standard pg environment variables from overriding it
+if (process.env.DATABASE_URL) {
+  delete process.env.PGHOST;
+  delete process.env.PGUSER;
+  delete process.env.PGPASSWORD;
+  delete process.env.PGDATABASE;
+  delete process.env.PGPORT;
+}
+
 // Use DATABASE_URL if available (typical for Railway/Render), otherwise fallback to individual credentials
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
