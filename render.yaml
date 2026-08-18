@@ -15,5 +15,3 @@ services:
 
 databases:
   - name: eto-db
-    databaseName: eto_db
-    user: postgres
