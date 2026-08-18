@@ -53,10 +53,36 @@ fun UserProfileView(
     var isEditingPatient by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf(patientName) }
     var editPhone by remember { mutableStateOf(patientPhone) }
+    
+    var editEmail by remember { mutableStateOf(patientProfile?.email ?: "") }
+    var editDob by remember { mutableStateOf(patientProfile?.date_of_birth ?: "") }
+    var editGender by remember { mutableStateOf(patientProfile?.gender ?: "") }
+    var editBloodGroup by remember { mutableStateOf(patientProfile?.blood_group ?: "") }
+    var editAllergies by remember { mutableStateOf(patientProfile?.allergies ?: "") }
+    var editConditions by remember { mutableStateOf(patientProfile?.conditions ?: "") }
+    var editMedications by remember { mutableStateOf(patientProfile?.current_medications ?: "") }
+    var editAddress by remember { mutableStateOf(patientProfile?.address ?: "") }
+    var editEmergencyName by remember { mutableStateOf(patientProfile?.emergency_contact_name ?: "") }
+    var editEmergencyPhone by remember { mutableStateOf(patientProfile?.emergency_contact_phone ?: "") }
 
     LaunchedEffect(patientName, patientPhone) {
         editName = patientName
         editPhone = patientPhone
+    }
+
+    LaunchedEffect(patientProfile) {
+        patientProfile?.let {
+            editEmail = it.email ?: ""
+            editDob = it.date_of_birth ?: ""
+            editGender = it.gender ?: ""
+            editBloodGroup = it.blood_group ?: ""
+            editAllergies = it.allergies ?: ""
+            editConditions = it.conditions ?: ""
+            editMedications = it.current_medications ?: ""
+            editAddress = it.address ?: ""
+            editEmergencyName = it.emergency_contact_name ?: ""
+            editEmergencyPhone = it.emergency_contact_phone ?: ""
+        }
     }
 
     LaunchedEffect(currentRole) {
@@ -118,16 +144,16 @@ fun UserProfileView(
                         )
                     }
                     IconButton(
-                        onClick = {},
+                        onClick = { viewModel.logout() },
                         colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f)
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
                         ),
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            imageVector = Icons.Default.Logout,
+                            contentDescription = "Log Out",
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -285,6 +311,16 @@ fun UserProfileView(
                                             if (isEditingPatient) {
                                                 editName = patientName
                                                 editPhone = patientPhone
+                                                editEmail = patientProfile?.email ?: ""
+                                                editDob = patientProfile?.date_of_birth ?: ""
+                                                editGender = patientProfile?.gender ?: ""
+                                                editBloodGroup = patientProfile?.blood_group ?: ""
+                                                editAllergies = patientProfile?.allergies ?: ""
+                                                editConditions = patientProfile?.conditions ?: ""
+                                                editMedications = patientProfile?.current_medications ?: ""
+                                                editAddress = patientProfile?.address ?: ""
+                                                editEmergencyName = patientProfile?.emergency_contact_name ?: ""
+                                                editEmergencyPhone = patientProfile?.emergency_contact_phone ?: ""
                                             }
                                             isEditingPatient = !isEditingPatient
                                         }
@@ -309,6 +345,86 @@ fun UserProfileView(
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(12.dp)
                                     )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editEmail,
+                                        onValueChange = { editEmail = it },
+                                        label = { Text("Email Address") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editDob,
+                                        onValueChange = { editDob = it },
+                                        label = { Text("Date of Birth (YYYY-MM-DD)") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editGender,
+                                        onValueChange = { editGender = it },
+                                        label = { Text("Gender") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editBloodGroup,
+                                        onValueChange = { editBloodGroup = it },
+                                        label = { Text("Blood Group") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editAllergies,
+                                        onValueChange = { editAllergies = it },
+                                        label = { Text("Allergies") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editConditions,
+                                        onValueChange = { editConditions = it },
+                                        label = { Text("Chronic Conditions") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editMedications,
+                                        onValueChange = { editMedications = it },
+                                        label = { Text("Current Medications") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editAddress,
+                                        onValueChange = { editAddress = it },
+                                        label = { Text("Address") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editEmergencyName,
+                                        onValueChange = { editEmergencyName = it },
+                                        label = { Text("Emergency Contact Name") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedTextField(
+                                        value = editEmergencyPhone,
+                                        onValueChange = { editEmergencyPhone = it },
+                                        label = { Text("Emergency Contact Phone") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Button(
                                         onClick = {
@@ -318,11 +434,17 @@ fun UserProfileView(
                                             viewModel.updatePatientProfile(
                                                 firstName = first,
                                                 lastName = last,
-                                                email = patientProfile?.email ?: "patient@eto.com",
+                                                email = editEmail,
                                                 newPhone = editPhone,
-                                                dateOfBirth = patientProfile?.date_of_birth ?: "1996-05-12",
-                                                gender = patientProfile?.gender ?: "MALE",
-                                                bloodGroup = patientProfile?.blood_group ?: "B+"
+                                                dateOfBirth = editDob,
+                                                gender = editGender,
+                                                bloodGroup = editBloodGroup,
+                                                allergies = editAllergies,
+                                                conditions = editConditions,
+                                                currentMedications = editMedications,
+                                                address = editAddress,
+                                                emergencyContactName = editEmergencyName,
+                                                emergencyContactPhone = editEmergencyPhone
                                             )
                                             isEditingPatient = false
                                         },
@@ -333,11 +455,16 @@ fun UserProfileView(
                                     }
                                 } else {
                                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        ProfileDetailRow(Icons.Outlined.CalendarToday, "Date of Birth", patientProfile?.date_of_birth ?: "12 May 1996")
-                                        ProfileDetailRow(Icons.Outlined.Person, "Gender", patientProfile?.gender ?: "Male")
+                                        ProfileDetailRow(Icons.Outlined.CalendarToday, "Date of Birth", if (patientProfile?.date_of_birth.isNullOrBlank()) "Not set" else patientProfile?.date_of_birth!!)
+                                        ProfileDetailRow(Icons.Outlined.Person, "Gender", if (patientProfile?.gender.isNullOrBlank()) "Not set" else patientProfile?.gender!!)
                                         ProfileDetailRow(Icons.Outlined.Phone, "Phone Number", patientProfile?.phone ?: patientPhone)
-                                        ProfileDetailRow(Icons.Outlined.Email, "Email", patientProfile?.email ?: "aarav.sharma@email.com")
-                                        ProfileDetailRow(Icons.Outlined.Home, "Address", "221B Baker Street, London, UK")
+                                        ProfileDetailRow(Icons.Outlined.Email, "Email", if (patientProfile?.email.isNullOrBlank()) "Not set" else patientProfile?.email!!)
+                                        ProfileDetailRow(Icons.Outlined.Home, "Address", if (patientProfile?.address.isNullOrBlank()) "Not set" else patientProfile?.address!!)
+                                        ProfileDetailRow(Icons.Outlined.Phone, "Emergency Contact", 
+                                            if (patientProfile?.emergency_contact_name != null) 
+                                                "${patientProfile?.emergency_contact_name} (${patientProfile?.emergency_contact_phone ?: ""})" 
+                                            else "Not set"
+                                        )
                                     }
                                 }
                             }
@@ -352,9 +479,9 @@ fun UserProfileView(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    InfoMiniCard("Blood Group", patientProfile?.blood_group ?: "B+", modifier = Modifier.weight(1f))
-                                    InfoMiniCard("Allergies", patientProfile?.allergies ?: "Penicillin", modifier = Modifier.weight(1f))
-                                    InfoMiniCard("Conditions", patientProfile?.conditions ?: "None", modifier = Modifier.weight(1f))
+                                    InfoMiniCard("Blood Group", if (patientProfile?.blood_group.isNullOrBlank()) "Not set" else patientProfile?.blood_group!!, modifier = Modifier.weight(1f))
+                                    InfoMiniCard("Allergies", if (patientProfile?.allergies.isNullOrBlank()) "Not set" else patientProfile?.allergies!!, modifier = Modifier.weight(1f))
+                                    InfoMiniCard("Conditions", if (patientProfile?.conditions.isNullOrBlank()) "Not set" else patientProfile?.conditions!!, modifier = Modifier.weight(1f))
                                 }
                             }
                         }

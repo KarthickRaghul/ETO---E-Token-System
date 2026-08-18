@@ -330,4 +330,39 @@ class EtoRepositoryImpl(
             apiService.getReceptionistProfile(phoneOrId)
         }
     }
+
+    override suspend fun login(email: String, password: String): com.eto.manager.data.remote.UserDto? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.login(com.eto.manager.data.remote.LoginRequest(email, password))
+                RetrofitClient.authToken = response.token
+                syncWithBackend()
+                response.user
+            } catch (e: Exception) {
+                Log.e("EtoRepositoryImpl", "Error logging in", e)
+                null
+            }
+        }
+    }
+
+    override suspend fun register(firstName: String, lastName: String, email: String, phone: String, password: String, role: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.register(
+                    com.eto.manager.data.remote.RegisterRequest(
+                        email = email,
+                        phone = phone,
+                        password = password,
+                        role = role,
+                        firstName = firstName,
+                        lastName = lastName
+                    )
+                )
+                true
+            } catch (e: Exception) {
+                Log.e("EtoRepositoryImpl", "Error registering", e)
+                false
+            }
+        }
+    }
 }

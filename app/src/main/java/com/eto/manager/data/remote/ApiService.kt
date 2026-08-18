@@ -8,6 +8,12 @@ import retrofit2.http.*
 
 interface ApiService {
 
+    @POST("api/auth/login")
+    suspend fun login(@Body body: LoginRequest): LoginResponse
+
+    @POST("api/auth/register")
+    suspend fun register(@Body body: RegisterRequest): UserDto
+
     @GET("api/departments")
     suspend fun getDepartments(): List<DepartmentEntity>
 
@@ -88,6 +94,10 @@ data class PatientProfileResponse(
     val blood_group: String?,
     val allergies: String?,
     val conditions: String?,
+    val current_medications: String?,
+    val address: String?,
+    val emergency_contact_name: String?,
+    val emergency_contact_phone: String?,
     val appointmentCount: Int,
     val savedHospitalsCount: Int,
     val created_at: String?
@@ -148,4 +158,32 @@ data class ConsultationRequest(
     val diagnosis: String,
     val prescription: String,
     val billAmount: Double
+)
+
+data class LoginRequest(
+    val email: String,
+    val password: String
+)
+
+data class LoginResponse(
+    val token: String,
+    val user: UserDto
+)
+
+data class UserDto(
+    val id: String,
+    val email: String,
+    val phone: String,
+    val role: String,
+    val firstName: String,
+    val lastName: String
+)
+
+data class RegisterRequest(
+    val email: String,
+    val phone: String,
+    val password: String,
+    val role: String,
+    val firstName: String,
+    val lastName: String
 )

@@ -48,6 +48,115 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentRole = MutableStateFlow(UserRole.PATIENT)
     val currentRole: StateFlow<UserRole> = _currentRole.asStateFlow()
 
+    // Auth States
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
+
+    private val _currentUser = MutableStateFlow<com.eto.manager.data.remote.UserDto?>(null)
+    val currentUser: StateFlow<com.eto.manager.data.remote.UserDto?> = _currentUser.asStateFlow()
+
+    private val _isAuthLoading = MutableStateFlow(false)
+    val isAuthLoading: StateFlow<Boolean> = _isAuthLoading.asStateFlow()
+
+    private val _authError = MutableStateFlow<String?>(null)
+    val authError: StateFlow<String?> = _authError.asStateFlow()
+
+    private val _authSuccessMessage = MutableStateFlow<String?>(null)
+    val authSuccessMessage: StateFlow<String?> = _authSuccessMessage.asStateFlow()
+
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            _isAuthLoading.value = true
+            _authError.value = null
+            try {
+                val user = repository.login(email.trim(), password)
+                if (user != null) {
+                    _currentUser.value = user
+                    patientName.value = "${user.firstName} ${user.lastName}".trim()
+                    patientPhone.value = user.phone
+                    
+                    val roleEnum = when (user.role.uppercase()) {
+                        "ADMIN" -> UserRole.ADMIN
+                        "DOCTOR" -> UserRole.DOCTOR
+                        "RECEPTIONIST" -> UserRole.RECEPTIONIST
+                        else -> UserRole.PATIENT
+                    }
+                    _currentRole.value = roleEnum
+                    
+                    // For doctor logging in, set the doctor view to their doctor ID
+                    if (roleEnum == UserRole.DOCTOR) {
+                        try {
+                            val docProfile = repository.getDoctorProfile(user.phone)
+                            _selectedDoctorForView.value = docProfile.id
+                            _doctorProfile.value = docProfile
+                        } catch (e: Exception) {
+                            android.util.Log.e("EtoViewModel", "Error fetching doctor ID on login", e)
+                        }
+                    } else if (roleEnum == UserRole.RECEPTIONIST) {
+                        try {
+                            val recProfile = repository.getReceptionistProfile(user.phone)
+                            _receptionistProfile.value = recProfile
+                        } catch (e: Exception) {
+                            android.util.Log.e("EtoViewModel", "Error fetching receptionist ID on login", e)
+                        }
+                    }
+                    
+                    fetchUserProfile(roleEnum)
+                    _isLoggedIn.value = true
+                } else {
+                    _authError.value = "Invalid email or password"
+                }
+            } catch (e: Exception) {
+                _authError.value = e.message ?: "Authentication failed"
+            } finally {
+                _isAuthLoading.value = false
+            }
+        }
+    }
+
+    fun register(firstName: String, lastName: String, email: String, phone: String, password: String, role: String) {
+        viewModelScope.launch {
+            _isAuthLoading.value = true
+            _authError.value = null
+            _authSuccessMessage.value = null
+            try {
+                val success = repository.register(
+                    firstName.trim(),
+                    lastName.trim(),
+                    email.trim(),
+                    phone.trim(),
+                    password,
+                    role.uppercase()
+                )
+                if (success) {
+                    _authSuccessMessage.value = "Registration successful! Please login."
+                } else {
+                    _authError.value = "Registration failed. Email or phone may already be in use."
+                }
+            } catch (e: Exception) {
+                _authError.value = e.message ?: "Registration failed"
+            } finally {
+                _isAuthLoading.value = false
+            }
+        }
+    }
+
+    fun logout() {
+        _isLoggedIn.value = false
+        _currentUser.value = null
+        com.eto.manager.data.remote.RetrofitClient.authToken = null
+        _authSuccessMessage.value = null
+        _authError.value = null
+    }
+
+    fun clearAuthSuccessMessage() {
+        _authSuccessMessage.value = null
+    }
+
+    fun clearAuthError() {
+        _authError.value = null
+    }
+
     // Patient Context
     val patientName = MutableStateFlow("John Doe")
     val patientPhone = MutableStateFlow("9876543210")
@@ -202,7 +311,13 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
         newPhone: String,
         dateOfBirth: String,
         gender: String,
-        bloodGroup: String
+        bloodGroup: String,
+        allergies: String,
+        conditions: String,
+        currentMedications: String,
+        address: String,
+        emergencyContactName: String,
+        emergencyContactPhone: String
     ) {
         viewModelScope.launch {
             val params = mapOf(
@@ -212,7 +327,13 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
                 "phone" to newPhone,
                 "dateOfBirth" to dateOfBirth,
                 "gender" to gender,
-                "bloodGroup" to bloodGroup
+                "bloodGroup" to bloodGroup,
+                "allergies" to allergies,
+                "conditions" to conditions,
+                "currentMedications" to currentMedications,
+                "address" to address,
+                "emergencyContactName" to emergencyContactName,
+                "emergencyContactPhone" to emergencyContactPhone
             )
             val success = repository.updatePatientProfile(patientPhone.value, params)
             if (success) {

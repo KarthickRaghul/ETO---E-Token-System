@@ -93,18 +93,63 @@ async function writeAuditLog(client, userId, action, entityType, entityId, newVa
 // ----------------------------------------------------
 app.post('/api/auth/register', async (req, res) => {
   const { email, phone, password, role, firstName, lastName } = req.body;
+  const client = await db.pool.connect();
   try {
+    await client.query('BEGIN');
     const passwordHash = hashPassword(password);
-    const result = await db.query(`
+    const result = await client.query(`
       INSERT INTO users (email, phone, password_hash, role, first_name, last_name)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id, email, phone, role, first_name, last_name
     `, [email, phone, passwordHash, role || 'PATIENT', firstName, lastName]);
     
-    res.status(201).json(result.rows[0]);
+    const user = result.rows[0];
+    const userId = user.id;
+    const resolvedRole = user.role;
+
+    const hospRes = await client.query('SELECT id FROM hospitals LIMIT 1');
+    const hospitalId = hospRes.rows[0]?.id;
+
+    if (resolvedRole === 'PATIENT') {
+      const patientId = crypto.randomUUID();
+      const patientNumber = `PT-${phone || Date.now()}`;
+      await client.query(`
+        INSERT INTO patients (id, user_id, patient_number, date_of_birth, gender, blood_group, address, emergency_contact_name, emergency_contact_phone)
+        VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, NULL)
+      `, [patientId, userId, patientNumber]);
+      
+      await client.query(`
+        INSERT INTO patient_medical_profiles (patient_id, blood_group, allergies, chronic_conditions, current_medications)
+        VALUES ($1, NULL, NULL, NULL, NULL)
+      `, [patientId]);
+    } else if (resolvedRole === 'DOCTOR') {
+      const doctorId = crypto.randomUUID();
+      const doctorNumber = `DOC-${phone || Date.now()}`;
+      await client.query(`
+        INSERT INTO doctors (id, user_id, doctor_number, specialization, qualification, experience_years, consultation_fee, bio, hospital_id, department_id, consultation_room, is_available)
+        VALUES ($1, $2, $3, 'General Physician', 'MBBS', 0, 0.0, NULL, $4, NULL, NULL, TRUE)
+      `, [doctorId, userId, doctorNumber, hospitalId]);
+    } else if (resolvedRole === 'RECEPTIONIST') {
+      const employeeNumber = `EMP-${phone || Date.now()}`;
+      await client.query(`
+        INSERT INTO receptionists (user_id, employee_number, hospital_id, department_id, designation, shift, joining_date, is_active)
+        VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, TRUE)
+      `, [userId, employeeNumber, hospitalId]);
+    } else if (resolvedRole === 'ADMIN') {
+      await client.query(`
+        INSERT INTO administrators (user_id, hospital_id, admin_level, is_active)
+        VALUES ($1, $2, 'HOSPITAL', TRUE)
+      `, [userId, hospitalId]);
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json(user);
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err);
     res.status(500).json({ error: 'Registration failed. Email/phone may already be in use.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -206,7 +251,15 @@ app.get('/api/hospitals/:id/departments', async (req, res) => {
 app.get('/api/profile/patient/:phone', async (req, res) => {
   try {
     const { phone } = req.params;
-    let userRes = await db.query('SELECT u.*, p.id as patient_id, p.date_of_birth, p.gender, p.blood_group FROM users u LEFT JOIN patients p ON p.user_id = u.id WHERE u.phone = $1', [phone]);
+    let userRes = await db.query(`
+      SELECT u.*, p.id as patient_id, p.date_of_birth, p.gender, p.blood_group as patient_blood_group,
+             p.address, p.emergency_contact_name, p.emergency_contact_phone,
+             mp.allergies, mp.chronic_conditions, mp.current_medications
+      FROM users u
+      LEFT JOIN patients p ON p.user_id = u.id
+      LEFT JOIN patient_medical_profiles mp ON mp.patient_id = p.id
+      WHERE u.phone = $1
+    `, [phone]);
     
     if (userRes.rows.length === 0) {
       // Create user and patient profile on the fly
@@ -222,7 +275,20 @@ app.get('/api/profile/patient/:phone', async (req, res) => {
         VALUES ($1, $2, 'PT0001', '1996-05-12', 'MALE', 'B+')
       `, [newPatientId, newUserId]);
 
-      userRes = await db.query('SELECT u.*, p.id as patient_id, p.date_of_birth, p.gender, p.blood_group FROM users u LEFT JOIN patients p ON p.user_id = u.id WHERE u.phone = $1', [phone]);
+      await db.query(`
+        INSERT INTO patient_medical_profiles (patient_id, blood_group, allergies, chronic_conditions, current_medications)
+        VALUES ($1, 'B+', 'Penicillin', 'None', 'None')
+      `, [newPatientId]);
+
+      userRes = await db.query(`
+        SELECT u.*, p.id as patient_id, p.date_of_birth, p.gender, p.blood_group as patient_blood_group,
+               p.address, p.emergency_contact_name, p.emergency_contact_phone,
+               mp.allergies, mp.chronic_conditions, mp.current_medications
+        FROM users u
+        LEFT JOIN patients p ON p.user_id = u.id
+        LEFT JOIN patient_medical_profiles mp ON mp.patient_id = p.id
+        WHERE u.phone = $1
+      `, [phone]);
     }
 
     const row = userRes.rows[0];
@@ -231,18 +297,22 @@ app.get('/api/profile/patient/:phone', async (req, res) => {
 
     res.json({
       id: row.patient_id || '',
-      first_name: row.first_name || 'Aarav',
-      last_name: row.last_name || 'Sharma',
-      email: row.email || 'aarav.sharma@email.com',
+      first_name: row.first_name || '',
+      last_name: row.last_name || '',
+      email: row.email || '',
       phone: row.phone,
-      date_of_birth: row.date_of_birth ? new Date(row.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '12 May 1996',
-      gender: row.gender ? (row.gender.charAt(0).toUpperCase() + row.gender.slice(1).toLowerCase()) : 'Male',
-      blood_group: row.blood_group || 'B+',
-      allergies: 'Penicillin',
-      conditions: 'None',
-      appointmentCount: apptCount > 0 ? apptCount : 18,
-      savedHospitalsCount: 5,
-      created_at: row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '12 Jan 2024'
+      date_of_birth: row.date_of_birth ? new Date(row.date_of_birth).toISOString().split('T')[0] : null,
+      gender: row.gender ? (row.gender.charAt(0).toUpperCase() + row.gender.slice(1).toLowerCase()) : null,
+      blood_group: row.patient_blood_group || null,
+      allergies: row.allergies || null,
+      conditions: row.chronic_conditions || null,
+      current_medications: row.current_medications || null,
+      address: row.address || null,
+      emergency_contact_name: row.emergency_contact_name || null,
+      emergency_contact_phone: row.emergency_contact_phone || null,
+      appointmentCount: apptCount,
+      savedHospitalsCount: 0,
+      created_at: row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
     });
   } catch (err) {
     console.error(err);
@@ -254,7 +324,8 @@ app.put('/api/profile/patient/:phone', async (req, res) => {
   const client = await db.pool.connect();
   try {
     const { phone } = req.params;
-    const { firstName, lastName, email, phone: newPhone, dateOfBirth, gender, bloodGroup } = req.body;
+    const { firstName, lastName, email, phone: newPhone, dateOfBirth, gender, bloodGroup,
+            allergies, conditions, currentMedications, address, emergencyContactName, emergencyContactPhone } = req.body;
     
     await client.query('BEGIN');
     
@@ -282,9 +353,9 @@ app.put('/api/profile/patient/:phone', async (req, res) => {
     if (patCheck.rows.length === 0) {
       patientId = crypto.randomUUID();
       await client.query(`
-        INSERT INTO patients (id, user_id, patient_number, date_of_birth, gender, blood_group)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [patientId, userId, `PAT-${newPhone || phone}`, dateOfBirth || '1990-01-01', gender?.toUpperCase() || 'MALE', bloodGroup || 'A+']);
+        INSERT INTO patients (id, user_id, patient_number, date_of_birth, gender, blood_group, address, emergency_contact_name, emergency_contact_phone)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [patientId, userId, `PAT-${newPhone || phone}`, dateOfBirth || null, gender?.toUpperCase() || null, bloodGroup || null, address || null, emergencyContactName || null, emergencyContactPhone || null]);
     } else {
       patientId = patCheck.rows[0].id;
       await client.query(`
@@ -292,9 +363,31 @@ app.put('/api/profile/patient/:phone', async (req, res) => {
         SET date_of_birth = COALESCE($1, date_of_birth),
             gender = COALESCE($2, gender),
             blood_group = COALESCE($3, blood_group),
+            address = COALESCE($4, address),
+            emergency_contact_name = COALESCE($5, emergency_contact_name),
+            emergency_contact_phone = COALESCE($6, emergency_contact_phone),
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $4
-      `, [dateOfBirth, gender?.toUpperCase(), bloodGroup, patientId]);
+        WHERE id = $7
+      `, [dateOfBirth, gender?.toUpperCase(), bloodGroup, address, emergencyContactName, emergencyContactPhone, patientId]);
+    }
+
+    // Update patient medical profile
+    const medCheck = await client.query('SELECT id FROM patient_medical_profiles WHERE patient_id = $1', [patientId]);
+    if (medCheck.rows.length === 0) {
+      await client.query(`
+        INSERT INTO patient_medical_profiles (patient_id, blood_group, allergies, chronic_conditions, current_medications)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [patientId, bloodGroup || null, allergies || null, conditions || null, currentMedications || null]);
+    } else {
+      await client.query(`
+        UPDATE patient_medical_profiles
+        SET blood_group = COALESCE($1, blood_group),
+            allergies = COALESCE($2, allergies),
+            chronic_conditions = COALESCE($3, chronic_conditions),
+            current_medications = COALESCE($4, current_medications),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE patient_id = $5
+      `, [bloodGroup, allergies, conditions, currentMedications, patientId]);
     }
     
     await client.query('COMMIT');
@@ -361,6 +454,8 @@ app.get('/api/profile/doctor/:id', async (req, res) => {
     `;
     if (isUuid) {
       queryStr += ` WHERE d.id = $1`;
+    } else if (/^\d+$/.test(id)) {
+      queryStr += ` WHERE u.phone = $1`;
     } else {
       queryStr += ` WHERE d.doctor_number = $1`;
     }

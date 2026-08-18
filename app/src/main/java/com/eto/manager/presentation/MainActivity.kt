@@ -80,6 +80,7 @@ import com.eto.manager.presentation.components.bounceClick
 import com.eto.manager.presentation.components.glassmorphicCard
 import com.eto.manager.presentation.components.magnetEffect
 import com.eto.manager.presentation.components.UserProfileView
+import com.eto.manager.presentation.components.LoginRegisterScreen
 import com.eto.manager.presentation.doctor.DoctorView
 import com.eto.manager.presentation.patient.PatientView
 import com.eto.manager.presentation.receptionist.ReceptionistView
@@ -102,11 +103,19 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val viewModel: EtoViewModel = viewModel()
-                    EtoAppShell(
-                        viewModel = viewModel,
-                        isDarkTheme = isDarkTheme,
-                        onThemeToggle = { isDarkTheme = !isDarkTheme }
-                    )
+                    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+                    if (isLoggedIn) {
+                        EtoAppShell(
+                            viewModel = viewModel,
+                            isDarkTheme = isDarkTheme,
+                            onThemeToggle = { isDarkTheme = !isDarkTheme }
+                        )
+                    } else {
+                        LoginRegisterScreen(
+                            viewModel = viewModel,
+                            isDark = isDarkTheme
+                        )
+                    }
                 }
             }
         }
@@ -352,7 +361,6 @@ fun CommonTopHeader(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
-                        .clickable { menuExpanded = true }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -375,28 +383,6 @@ fun CommonTopHeader(
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Icon(
-                        imageVector = Icons.Default.ExpandMore,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    UserRole.values().forEach { role ->
-                        DropdownMenuItem(
-                            text = { Text(role.name, fontSize = 12.sp, fontWeight = FontWeight.Bold) },
-                            onClick = {
-                                onRoleChange(role)
-                                menuExpanded = false
-                            }
-                        )
-                    }
                 }
             }
 

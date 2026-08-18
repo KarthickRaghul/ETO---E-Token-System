@@ -35,4 +35,6 @@ interface EtoRepository {
     suspend fun getPatientProfile(phone: String): com.eto.manager.data.remote.PatientProfileResponse
     suspend fun getDoctorProfile(doctorId: String): com.eto.manager.data.remote.DoctorProfileResponse
     suspend fun getReceptionistProfile(phoneOrId: String): com.eto.manager.data.remote.ReceptionistProfileResponse
+    suspend fun login(email: String, password: String): com.eto.manager.data.remote.UserDto?
+    suspend fun register(firstName: String, lastName: String, email: String, phone: String, password: String, role: String): Boolean
 }
