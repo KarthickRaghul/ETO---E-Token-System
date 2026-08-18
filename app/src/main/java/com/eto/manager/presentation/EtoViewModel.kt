@@ -284,7 +284,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
     val notifications = _notifications.asStateFlow()
 
     // Simulation controls
-    private val _isSimulationActive = MutableStateFlow(true)
+    private val _isSimulationActive = MutableStateFlow(false)
     val isSimulationActive = _isSimulationActive.asStateFlow()
     private var simulationJob: Job? = null
 
@@ -584,6 +584,7 @@ class EtoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun startSimulation() {
+        if (!_isSimulationActive.value) return
         simulationJob?.cancel()
         simulationJob = viewModelScope.launch {
             while (true) {
